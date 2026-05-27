@@ -101,7 +101,8 @@
                         <span class="text-xs text-gray-400">Máx: 500</span>
                     </div>
 
-                    <button onclick="addToCart()" class="w-full bg-black text-white py-4 md:py-5 rounded-xl font-bold text-base md:text-lg hover:bg-gray-800 transition-colors shadow-xl hover:shadow-2xl focus:outline-none active:scale-[0.98]">
+                    <!-- BOTÓN AÑADIR CON ID PARA PODER MODIFICAR SU ESTADO -->
+                    <button id="modal-add-to-cart-btn" onclick="addToCart()" class="w-full bg-black text-white py-4 md:py-5 rounded-xl font-bold text-base md:text-lg hover:bg-gray-800 transition-colors shadow-xl hover:shadow-2xl focus:outline-none active:scale-[0.98]">
                         Añadir al carrito
                     </button>
                 </div>
@@ -202,12 +203,15 @@
             products.forEach(product => {
                 if (!product.variants || product.variants.length === 0) return;
 
+                // CÓDIGO ACTUALIZADO: El botón tiene opacidad y una línea cruzada roja si está agotado
                 const colorsHTML = product.variants.map((variant, index) => 
                     `<button 
                         onclick="changeCardImage(${product.id}, ${index}, event)" 
-                        class="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform shadow-sm focus:outline-none focus:border-black shrink-0" 
-                        style="background-color: ${variant.color_hex};" 
-                        title="${variant.color_name}"></button>`
+                        class="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform shadow-sm focus:outline-none focus:border-black shrink-0 relative overflow-hidden" 
+                        style="background-color: ${variant.color_hex}; ${variant.is_sold_out ? 'opacity: 0.5;' : ''}" 
+                        title="${variant.color_name}${variant.is_sold_out ? ' (Agotado)' : ''}">
+                        ${variant.is_sold_out ? '<div class="absolute inset-0 m-auto w-full h-[1.5px] bg-red-600 -rotate-45 shadow-sm"></div>' : ''}
+                    </button>`
                 ).join('');
 
                 const defaultVariant = product.variants[0];
@@ -303,6 +307,20 @@
                 if (idx === variantIndex) btn.classList.add('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
                 else btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
             });
+
+            // CÓDIGO ACTUALIZADO: Comprobar si está agotado y deshabilitar/cambiar el botón del carrito
+            const cartBtn = document.getElementById('modal-add-to-cart-btn');
+            if (variant.is_sold_out) {
+                cartBtn.disabled = true;
+                cartBtn.innerText = 'Color Agotado';
+                cartBtn.classList.remove('bg-black', 'hover:bg-gray-800', 'active:scale-[0.98]');
+                cartBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            } else {
+                cartBtn.disabled = false;
+                cartBtn.innerText = 'Añadir al carrito';
+                cartBtn.classList.add('bg-black', 'hover:bg-gray-800', 'active:scale-[0.98]');
+                cartBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            }
         }
 
         function openModal(productId) {
@@ -314,12 +332,15 @@
             document.getElementById('modal-price').innerText = `${product.price} €`;
             document.getElementById('modal-description').innerText = product.description || 'Sin descripción';
             
+            // CÓDIGO ACTUALIZADO: Botones del modal con efecto visual de agotado
             const colorsHTML = product.variants.map((variant, index) => 
                 `<button 
                     onclick="changeModalImage(${index})" 
-                    class="modal-color-btn w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-200 hover:scale-110 transition-all shadow-sm focus:outline-none shrink-0" 
-                    style="background-color: ${variant.color_hex};" 
-                    title="${variant.color_name}"></button>`
+                    class="modal-color-btn w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-200 hover:scale-110 transition-all shadow-sm focus:outline-none shrink-0 relative overflow-hidden" 
+                    style="background-color: ${variant.color_hex}; ${variant.is_sold_out ? 'opacity: 0.5;' : ''}" 
+                    title="${variant.color_name}${variant.is_sold_out ? ' (Agotado)' : ''}">
+                    ${variant.is_sold_out ? '<div class="absolute inset-0 m-auto w-full h-[2px] bg-red-600 -rotate-45 shadow-sm"></div>' : ''}
+                </button>`
             ).join('');
             document.getElementById('modal-colors-container').innerHTML = colorsHTML;
 
@@ -379,6 +400,10 @@
             validateModalQty(document.getElementById('modal-qty'));
             
             const variant = currentModalProduct.variants[currentVariantIndex];
+
+            // CÓDIGO ACTUALIZADO: Filtro de seguridad (por si modifican el HTML en consola)
+            if (variant.is_sold_out) return; 
+
             const qty = parseInt(document.getElementById('modal-qty').value);
             
             const existingItemIndex = cart.findIndex(item => item.productId === currentModalProduct.id && item.variantIndex === currentVariantIndex);
@@ -592,6 +617,11 @@
 
                 appProducts = data;
                 renderProducts(appProducts);
+                
+                // Si el modal está abierto, forzamos a refrescar el estado del botón
+                if (currentModalProduct) {
+                    changeModalImage(currentVariantIndex);
+                }
             } catch (error) {
                 console.error("Error al cargar desde Supabase:", error);
             }
@@ -615,6 +645,10 @@
                             closeModal();
                         }
                     }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, payload => {
+                    // Refresca si cambian los colores (agotado o no)
+                    fetchAndLoadProducts(); 
                 })
                 .subscribe();
         }
