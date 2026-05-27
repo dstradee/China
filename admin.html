@@ -41,6 +41,7 @@
             <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
         </div>
 
+        <!-- PESTAÑA: AÑADIR PRODUCTO -->
         <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <h1 class="text-2xl font-bold text-gray-900 mb-6" id="form-title">Añadir Nuevo Producto</h1>
             <form id="product-form" class="space-y-6">
@@ -63,12 +64,14 @@
             </form>
         </div>
 
+        <!-- PESTAÑA: CATÁLOGO -->
         <div id="tab-catalog" class="hidden bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <table class="w-full text-left">
                 <tbody id="catalog-body"></tbody>
             </table>
         </div>
 
+        <!-- PESTAÑA: PEDIDOS -->
         <div id="tab-orders" class="hidden bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <h2 class="text-2xl font-bold mb-4">Pedidos</h2>
             <div id="orders-container"></div>
@@ -76,10 +79,12 @@
     </div>
 
     <script>
+        // CONFIGURACIÓN SUPABASE (Tus claves originales)
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
+        // LÓGICA DE LOGIN
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -100,9 +105,13 @@
             }
         });
 
-        async function logout() { await supabase.auth.signOut(); location.reload(); }
+        // LÓGICA DE CERRAR SESIÓN
+        async function logout() { 
+            await supabase.auth.signOut(); 
+            location.reload(); 
+        }
 
-        // Cargar Sesión inicial al arrancar
+        // CARGAR SESIÓN INICIAL AL ARRANCAR
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 document.getElementById('login-section').classList.add('hidden');
@@ -110,12 +119,137 @@
             }
         });
 
-        // Funciones básicas para que esto no rompa
-        function switchTab(t) { /* lógica de pestañas igual */ }
-        function loadCatalog() { /* lógica anterior */ }
-        function addVariantRow() { /* lógica anterior */ }
-        function openCloudinaryWidget(id) { /* lógica anterior */ }
-        // ... (Mantén aquí el resto de funciones previas que ya funcionaban bien)
+
+        // --- LÓGICA DE PESTAÑAS (TABS) FUNCIONAL ---
+        function switchTab(tabId) {
+            // 1. Ocultar todos los contenidos de las pestañas
+            document.getElementById('tab-add').classList.add('hidden');
+            document.getElementById('tab-catalog').classList.add('hidden');
+            document.getElementById('tab-orders').classList.add('hidden');
+
+            // 2. Quitar estilos activos de todos los botones
+            const btnAdd = document.getElementById('btn-tab-add');
+            const btnCatalog = document.getElementById('btn-tab-catalog');
+            const btnOrders = document.getElementById('btn-tab-orders');
+
+            [btnAdd, btnCatalog, btnOrders].forEach(btn => {
+                btn.className = 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none'; 
+            });
+
+            // 3. Mostrar el contenido de la pestaña seleccionada
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            // 4. Poner estilo activo al botón seleccionado
+            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+            activeBtn.className = 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none'; 
+
+            // 5. Cargar los datos desde Supabase según la pestaña seleccionada
+            if (tabId === 'catalog') {
+                loadCatalog();
+            } else if (tabId === 'orders') {
+                loadOrders();
+            }
+        }
+
+        // --- CARGAR CATÁLOGO DESDE SUPABASE ---
+        async function loadCatalog() {
+            const tbody = document.getElementById('catalog-body');
+            tbody.innerHTML = '<tr><td class="p-4 text-gray-500">Cargando productos...</td></tr>';
+
+            // ATENCIÓN: Si tu tabla en Supabase se llama "products" en lugar de "productos", cámbialo aquí abajo.
+            const { data, error } = await supabase.from('productos').select('*');
+
+            if (error) {
+                tbody.innerHTML = `<tr><td class="p-4 text-red-500">Error al cargar: ${error.message}</td></tr>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td class="p-4 text-gray-500">No hay productos en el catálogo.</td></tr>';
+                return;
+            }
+
+            let html = `
+                <tr class="bg-gray-50 border-b">
+                    <th class="p-4 font-semibold text-gray-700">Nombre</th>
+                    <th class="p-4 font-semibold text-gray-700">Precio</th>
+                    <th class="p-4 font-semibold text-gray-700">Acciones</th>
+                </tr>
+            `;
+
+            data.forEach(product => {
+                html += `
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="p-4">${product.nombre || product.name || 'Sin nombre'}</td>
+                        <td class="p-4 font-medium">${product.precio || product.price || '0.00'} €</td>
+                        <td class="p-4">
+                            <button class="text-blue-600 hover:underline mr-4">Editar</button>
+                            <button class="text-red-600 hover:underline">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // --- CARGAR PEDIDOS DESDE SUPABASE ---
+        async function loadOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '<p class="text-gray-500">Cargando pedidos...</p>';
+
+            // ATENCIÓN: Si tu tabla en Supabase se llama "orders" en lugar de "pedidos", cámbialo aquí abajo.
+            const { data, error } = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p class="text-red-500">Error al cargar: ${error.message}</p>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">Aún no hay pedidos registrados.</p>';
+                return;
+            }
+
+            let html = `
+                <table class="w-full text-left border-collapse mt-4">
+                    <thead>
+                        <tr class="bg-gray-50 border-b">
+                            <th class="p-4 font-semibold text-gray-700">ID</th>
+                            <th class="p-4 font-semibold text-gray-700">Fecha</th>
+                            <th class="p-4 font-semibold text-gray-700">Cliente</th>
+                            <th class="p-4 font-semibold text-gray-700">Total</th>
+                            <th class="p-4 font-semibold text-gray-700">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(order => {
+                const date = new Date(order.created_at).toLocaleDateString('es-ES');
+                html += `
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="p-4 text-sm text-gray-500">#${order.id}</td>
+                        <td class="p-4">${date}</td>
+                        <td class="p-4">${order.cliente || order.customer_name || 'Desconocido'}</td>
+                        <td class="p-4 font-medium">${order.total || order.precio_total || '0.00'} €</td>
+                        <td class="p-4">
+                            <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
+                                ${order.estado || order.status || 'Completado'}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        // --- FUNCIONES MANTENIDAS (Para que el resto no de fallos al integrarlo a futuro) ---
+        function addVariantRow() { console.log('Añadir variante'); }
+        function openCloudinaryWidget(id) { console.log('Abrir Cloudinary', id); }
+
     </script>
 </body>
 </html>
