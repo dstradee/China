@@ -95,7 +95,7 @@
                     <div class="flex items-center gap-4 mb-6 md:mb-8">
                         <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
                             <button onclick="changeModalQty(-1)" class="px-4 py-2 md:py-3 text-gray-600 hover:bg-gray-100 font-bold transition focus:outline-none">-</button>
-                            <input type="number" id="modal-qty" value="1" min="1" max="500" class="w-16 text-center font-bold focus:outline-none border-x border-gray-300 py-2 md:py-3" readonly>
+                            <input type="number" id="modal-qty" value="1" min="1" max="500" class="w-16 text-center font-bold focus:outline-none border-x border-gray-300 py-2 md:py-3" onblur="validateModalQty(this)">
                             <button onclick="changeModalQty(1)" class="px-4 py-2 md:py-3 text-gray-600 hover:bg-gray-100 font-bold transition focus:outline-none">+</button>
                         </div>
                         <span class="text-xs text-gray-400">Máx: 500</span>
@@ -176,6 +176,8 @@
         // Variables para el carrusel
         var currentCarouselImages = [];
         var currentCarouselIndex = 0;
+        
+        var cartOverlayTimeout; // Variable para arreglar el bug del carrito
 
         const getPlaceholder = (colorHex) => `<div class="w-full h-full flex items-center justify-center bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="${colorHex}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-sm opacity-50"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg></div>`;
 
@@ -373,14 +375,26 @@
         function changeModalQty(change) {
             const qtyInput = document.getElementById('modal-qty');
             let current = parseInt(qtyInput.value);
+            if(isNaN(current)) current = 1;
             let newVal = current + change;
             if (newVal < 1) newVal = 1;
             if (newVal > 500) newVal = 500; // Límite de 500
             qtyInput.value = newVal;
         }
 
+        // Valida que no pongan letras o números locos al escribir a mano
+        function validateModalQty(input) {
+            let val = parseInt(input.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > 500) val = 500;
+            input.value = val;
+        }
+
         function addToCart() {
             if (!currentModalProduct) return;
+            
+            // Validamos por si acaso han escrito un número loco y le han dado a añadir directamente
+            validateModalQty(document.getElementById('modal-qty'));
             
             const variant = currentModalProduct.variants[currentVariantIndex];
             const qty = parseInt(document.getElementById('modal-qty').value);
@@ -437,6 +451,8 @@
             const overlay = document.getElementById('cart-overlay');
             const isClosed = panel.classList.contains('translate-x-full');
             
+            clearTimeout(cartOverlayTimeout); // Limpiamos el temporizador para evitar el bug de bloqueos
+            
             if (isClosed) {
                 updateCartUI(); 
                 overlay.classList.remove('hidden');
@@ -448,7 +464,7 @@
             } else {
                 panel.classList.add('translate-x-full');
                 overlay.classList.add('opacity-0');
-                setTimeout(() => overlay.classList.add('hidden'), 300);
+                cartOverlayTimeout = setTimeout(() => overlay.classList.add('hidden'), 300);
             }
         }
 
