@@ -131,7 +131,7 @@
                 <span id="cart-total" class="text-2xl font-black text-gray-900">0.00 €</span>
             </div>
 
-            <!-- Formulario y Botón de Checkout "Vacío" -->
+            <!-- Formulario de Checkout (Campos obligatorios "required") -->
             <form id="checkout-form" class="space-y-3 mt-2 hidden">
                 <h3 class="font-bold text-gray-800 text-sm mb-2 border-b pb-1">Datos de envío</h3>
                 <input type="text" id="order-name" required placeholder="Nombre y Apellidos" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black outline-none text-sm">
@@ -147,7 +147,7 @@
                 Tramitar Pedido
             </button>
             
-            <p id="checkout-msg" class="text-center font-bold mt-4 hidden"></p>
+            <div id="checkout-msg" class="text-center font-bold mt-4 p-3 rounded-lg hidden"></div>
         </div>
     </div>
     
@@ -160,31 +160,30 @@
     <!-- Lógica de la aplicación -->
     <script>
         // ==========================================
-        // 1. CONFIGURACIÓN DE SUPABASE
+        // 1. CONFIGURACIÓN
         // ==========================================
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
+        // CONFIGURACIÓN TELEGRAM
+        const TELEGRAM_BOT_TOKEN = '8603553045:AAFpmVcNjxbvzsvb09egdVzLxcscAtaRr-Y';
+        // PABLO: Tienes que poner tu Chat ID aquí obligatoriamente (usa @userinfobot en Telegram para saberlo)
+        const TELEGRAM_CHAT_ID = 'AQUI_PON_TU_CHAT_ID'; 
+
         var appProducts = []; 
         var currentModalProduct = null;
-        var currentVariantIndex = 0; // Guardamos qué variante está seleccionada
+        var currentVariantIndex = 0; 
         
-        // Memoria del carrito (Local Storage)
         let cart = JSON.parse(localStorage.getItem('nardo_cart')) || [];
-        
-        // Variables para el carrusel
         var currentCarouselImages = [];
         var currentCarouselIndex = 0;
-        
-        var cartOverlayTimeout; // Variable para arreglar el bug del carrito
+        var cartOverlayTimeout; 
 
         const getPlaceholder = (colorHex) => `<div class="w-full h-full flex items-center justify-center bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="${colorHex}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-sm opacity-50"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg></div>`;
 
-        // Renderiza la primera imagen de una variante (Para las tarjetas pequeñas)
         const renderFirstImage = (variant) => {
             if (!variant.image_url) return getPlaceholder(variant.color_hex);
-            // Si hay varias URLs separadas por coma, coge la primera
             const firstUrl = variant.image_url.split(',')[0].trim();
             return `<img src="${firstUrl}" alt="Variante" class="w-full h-full object-cover">`;
         };
@@ -216,19 +215,14 @@
 
                 const productCard = `
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer group" onclick="openModal(${product.id})">
-                        
-                        <!-- Imagen en proporción 4:5 (Mejor para ropa) -->
                         <div class="aspect-[4/5] bg-gray-50 flex items-center justify-center border-b border-gray-100 relative overflow-hidden" id="card-img-container-${product.id}">
                             ${renderFirstImage(defaultVariant)}
                         </div>
-
-                        <!-- Info del Producto -->
                         <div class="p-3 md:p-5 flex flex-col flex-grow">
                             <div class="flex flex-col md:flex-row justify-between md:items-start mb-2 gap-1 md:gap-2">
                                 <h3 class="text-sm md:text-lg font-bold text-gray-900 group-hover:text-nardo transition-colors leading-tight">${product.name}</h3>
                                 <p class="text-sm md:text-lg font-black text-gray-900 whitespace-nowrap">${product.price}€</p>
                             </div>
-                            
                             <div class="mt-auto pt-3 md:pt-4 flex items-center justify-between">
                                 <div class="flex gap-1 md:gap-2 overflow-x-auto pb-1 no-scrollbar">
                                     ${colorsHTML}
@@ -251,7 +245,6 @@
             if (product && container) container.innerHTML = renderFirstImage(product.variants[variantIndex]);
         }
 
-        // Lógica del Carrusel
         function renderCarouselImage() {
             const container = document.getElementById('modal-image-container');
             const arrows = document.getElementById('carousel-arrows');
@@ -291,14 +284,12 @@
             renderCarouselImage();
         }
 
-        // Al seleccionar un color en el modal
         function changeModalImage(variantIndex) {
             if (!currentModalProduct) return;
             
-            currentVariantIndex = variantIndex; // Guardamos índice activo para el carrito
+            currentVariantIndex = variantIndex; 
             const variant = currentModalProduct.variants[variantIndex];
             
-            // MAGIA: Si el usuario ha puesto varias URLs separadas por coma en la BD
             if (variant.image_url) {
                 currentCarouselImages = variant.image_url.split(',').map(url => url.trim()).filter(url => url !== "");
             } else {
@@ -308,7 +299,6 @@
             currentCarouselIndex = 0;
             renderCarouselImage();
             
-            // Actualizar estilo de los botones de color
             const buttons = document.querySelectorAll('.modal-color-btn');
             buttons.forEach((btn, idx) => {
                 if (idx === variantIndex) btn.classList.add('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
@@ -340,11 +330,10 @@
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
-                // En móvil sube desde abajo (translate-y-0), en PC se quita el scale
                 modalContent.classList.remove('translate-y-full', 'md:scale-95');
             }, 10);
             
-            document.getElementById('modal-qty').value = 1; // Resetear contador a 1
+            document.getElementById('modal-qty').value = 1; 
             changeModalImage(0);
         }
 
@@ -353,7 +342,6 @@
             const modalContent = document.getElementById('modal-content');
             
             modal.classList.add('opacity-0');
-            // Volvemos a ocultar hacia abajo en móvil, o escalar en PC
             modalContent.classList.add('translate-y-full', 'md:scale-95');
             
             setTimeout(() => {
@@ -362,7 +350,6 @@
             }, 300);
         }
 
-        // Cerrar al pulsar fuera del modal
         document.getElementById('product-modal').addEventListener('click', function(event) {
             if (event.target === this) closeModal();
         });
@@ -371,18 +358,16 @@
         // 4. LÓGICA DEL CARRITO Y PEDIDOS
         // ==========================================
         
-        // Cambiar cantidad en el modal (Botones + / -)
         function changeModalQty(change) {
             const qtyInput = document.getElementById('modal-qty');
             let current = parseInt(qtyInput.value);
             if(isNaN(current)) current = 1;
             let newVal = current + change;
             if (newVal < 1) newVal = 1;
-            if (newVal > 500) newVal = 500; // Límite de 500
+            if (newVal > 500) newVal = 500; 
             qtyInput.value = newVal;
         }
 
-        // Valida que no pongan letras o números locos al escribir a mano
         function validateModalQty(input) {
             let val = parseInt(input.value);
             if (isNaN(val) || val < 1) val = 1;
@@ -392,25 +377,18 @@
 
         function addToCart() {
             if (!currentModalProduct) return;
-            
-            // Validamos por si acaso han escrito un número loco y le han dado a añadir directamente
             validateModalQty(document.getElementById('modal-qty'));
             
             const variant = currentModalProduct.variants[currentVariantIndex];
             const qty = parseInt(document.getElementById('modal-qty').value);
             
-            // Comprobamos si EXACTAMENTE ese producto con ESE color ya está en el carrito
             const existingItemIndex = cart.findIndex(item => item.productId === currentModalProduct.id && item.variantIndex === currentVariantIndex);
             
             if (existingItemIndex > -1) {
-                // Si existe, le sumamos la cantidad (límite 500)
                 cart[existingItemIndex].quantity += qty;
                 if(cart[existingItemIndex].quantity > 500) cart[existingItemIndex].quantity = 500;
             } else {
-                // Guardamos el primer enlace de la foto para el mini carrito
                 const cartImage = variant.image_url ? variant.image_url.split(',')[0].trim() : null;
-
-                // Si no, lo metemos como nuevo
                 cart.push({
                     productId: currentModalProduct.id,
                     variantIndex: currentVariantIndex,
@@ -426,7 +404,7 @@
             saveCart();
             updateCartUI();
             closeModal();
-            toggleCart(); // Abrimos el panel lateral
+            toggleCart(); 
         }
 
         function saveCart() {
@@ -451,7 +429,7 @@
             const overlay = document.getElementById('cart-overlay');
             const isClosed = panel.classList.contains('translate-x-full');
             
-            clearTimeout(cartOverlayTimeout); // Limpiamos el temporizador para evitar el bug de bloqueos
+            clearTimeout(cartOverlayTimeout); 
             
             if (isClosed) {
                 updateCartUI(); 
@@ -529,31 +507,85 @@
         }
 
         // ==========================================
-        // BOTÓN EJECUTAR ORDEN (AÚN VACÍO COMO PEDISTE)
+        // 5. EJECUTAR ORDEN (Supabase + Telegram)
         // ==========================================
-        document.getElementById('checkout-form').addEventListener('submit', function(e) {
-            e.preventDefault(); // Evitamos que la web recargue
+        document.getElementById('checkout-form').addEventListener('submit', async function(e) {
+            e.preventDefault(); 
             
             if (cart.length === 0) return;
 
-            // Por ahora, solo hacemos el amago
-            console.log("¡Botón 'Ejecutar orden' pulsado!");
-            console.log("Datos que se enviarán en el futuro:", cart);
-            
+            const btn = document.getElementById('btn-submit-order');
             const msg = document.getElementById('checkout-msg');
-            msg.innerText = "Simulación: Orden lista para procesar en un futuro.";
-            msg.className = "text-center font-bold mt-4 text-blue-600 block";
+            const name = document.getElementById('order-name').value;
+            const email = document.getElementById('order-email').value;
+            const phone = document.getElementById('order-phone').value;
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            // Cambiamos estado del botón
+            btn.disabled = true;
+            btn.innerText = "Procesando...";
+            msg.classList.add('hidden');
+
+            try {
+                // 1. Guardar en Supabase (En la tabla 'orders' que hemos creado)
+                const { error: supabaseError } = await supabase.from('orders').insert([{
+                    customer_name: name,
+                    customer_email: email,
+                    customer_phone: phone,
+                    items: cart,
+                    total_price: total
+                }]);
+
+                if (supabaseError) throw supabaseError;
+
+                // 2. Enviar a Telegram
+                if (TELEGRAM_CHAT_ID === 'AQUI_PON_TU_CHAT_ID') {
+                    console.warn("Falta el Chat ID de Telegram, el mensaje no se enviará, pero el pedido está guardado.");
+                } else {
+                    const telegramText = `🔥 ¡NUEVO PEDIDO! 🔥\n\n👤 Nombre: ${name}\n📧 Email: ${email}\n📞 Teléfono: ${phone}\n💰 Total: ${total.toFixed(2)} €\n\n📦 PRODUCTOS:\n${cart.map(item => `- ${item.quantity}x ${item.name} (${item.colorName})`).join('\n')}`;
+                    
+                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: TELEGRAM_CHAT_ID,
+                            text: telegramText
+                        })
+                    });
+                }
+
+                // 3. Éxito: Limpiamos carrito y avisamos al cliente
+                cart = [];
+                saveCart();
+                document.getElementById('checkout-form').reset();
+                
+                msg.innerText = "¡Pedido realizado con éxito! Nos pondremos en contacto contigo.";
+                msg.className = "text-center font-bold mt-4 p-3 rounded-lg bg-green-100 text-green-800 block";
+                btn.classList.add('hidden'); // Ocultar el botón para que no pulse dos veces
+                
+                setTimeout(() => {
+                    toggleCart(); // Cerramos el panel automáticamente tras 3 segundos
+                }, 3000);
+
+            } catch (err) {
+                console.error("Error al procesar el pedido:", err);
+                msg.innerText = "Error al procesar el pedido. Inténtalo de nuevo.";
+                msg.className = "text-center font-bold mt-4 p-3 rounded-lg bg-red-100 text-red-800 block";
+                btn.disabled = false;
+                btn.innerText = "Ejecutar orden";
+            }
         });
 
         // ==========================================
-        // 5. CONEXIÓN A SUPABASE Y DATOS 
+        // 6. CONEXIÓN A SUPABASE Y DATOS (Filtro Anti-Fantasmas)
         // ==========================================
         async function fetchAndLoadProducts() {
             try {
-                // Supabase solo nos va a devolver los que tengan is_visible = true
+                // AQUÍ ESTÁ EL ARREGLO: .eq('is_visible', true) fuerza a que solo vengan los visibles
                 const { data, error } = await supabase
                     .from('products')
-                    .select('*, variants:product_variants(*)');
+                    .select('*, variants:product_variants(*)')
+                    .eq('is_visible', true);
 
                 if (error) throw error;
 
@@ -565,7 +597,7 @@
         }
 
         // ==========================================
-        // 6. SUPABASE REALTIME (Tiempo Real)
+        // 7. SUPABASE REALTIME (Tiempo Real)
         // ==========================================
         function setupRealtime() {
             supabase
@@ -574,7 +606,6 @@
                     console.log('¡Cambio detectado en BD!', payload);
                     fetchAndLoadProducts();
                     
-                    // Control anti-fantasmas si el producto se oculta mientras alguien lo mira
                     if (currentModalProduct) {
                         if (payload.eventType === 'UPDATE' && payload.new.is_visible === false && payload.new.id === currentModalProduct.id) {
                             closeModal();
@@ -590,20 +621,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             fetchAndLoadProducts(); 
             setupRealtime();        
-            updateCartBadge(); // Mostrar numerito si ya tenías algo en el carro de ayer
+            updateCartBadge(); 
         });
 
     </script>
     
     <style>
-        /* Ocultar barra de scroll en contenedores pequeños */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </body>
 </html>
