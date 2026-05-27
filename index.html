@@ -168,8 +168,7 @@
 
         // CONFIGURACIÓN TELEGRAM
         const TELEGRAM_BOT_TOKEN = '8603553045:AAFpmVcNjxbvzsvb09egdVzLxcscAtaRr-Y';
-        // PABLO: Tienes que poner tu Chat ID aquí obligatoriamente (usa @userinfobot en Telegram para saberlo)
-        const TELEGRAM_CHAT_ID = 'AQUI_PON_TU_CHAT_ID'; 
+        const TELEGRAM_CHAT_IDS = ['7200570066', '6519651464']; 
 
         var appProducts = []; 
         var currentModalProduct = null;
@@ -538,20 +537,22 @@
 
                 if (supabaseError) throw supabaseError;
 
-                // 2. Enviar a Telegram
-                if (TELEGRAM_CHAT_ID === 'AQUI_PON_TU_CHAT_ID') {
-                    console.warn("Falta el Chat ID de Telegram, el mensaje no se enviará, pero el pedido está guardado.");
+                // 2. Enviar a Telegram a múltiples Chat IDs simultáneamente
+                if (TELEGRAM_CHAT_IDS.length === 0) {
+                    console.warn("Faltan los Chat IDs de Telegram, el mensaje no se enviará, pero el pedido está guardado.");
                 } else {
                     const telegramText = `🔥 ¡NUEVO PEDIDO! 🔥\n\n👤 Nombre: ${name}\n📧 Email: ${email}\n📞 Teléfono: ${phone}\n💰 Total: ${total.toFixed(2)} €\n\n📦 PRODUCTOS:\n${cart.map(item => `- ${item.quantity}x ${item.name} (${item.colorName})`).join('\n')}`;
                     
-                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: TELEGRAM_CHAT_ID,
-                            text: telegramText
+                    await Promise.all(TELEGRAM_CHAT_IDS.map(chatId => 
+                        fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: chatId,
+                                text: telegramText
+                            })
                         })
-                    });
+                    ));
                 }
 
                 // 3. Éxito: Limpiamos carrito y avisamos al cliente
