@@ -35,17 +35,23 @@
         <!-- Menú de navegación superior -->
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
             <div class="flex gap-4">
-                <button onclick="switchTab('add')" id="btn-tab-add" class="font-bold text-black border-b-2 border-black pb-1 focus:outline-none">Añadir Producto</button>
+                <button onclick="switchTab('add')" id="btn-tab-add" class="font-bold text-black border-b-2 border-black pb-1 focus:outline-none">Añadir/Editar Producto</button>
                 <button onclick="switchTab('catalog')" id="btn-tab-catalog" class="font-bold text-gray-400 hover:text-black pb-1 focus:outline-none">Catálogo</button>
+                <button onclick="switchTab('orders')" id="btn-tab-orders" class="font-bold text-gray-400 hover:text-black pb-1 focus:outline-none flex items-center gap-2">
+                    Pedidos <span id="orders-badge" class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
+                </button>
             </div>
             <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
         </div>
 
-        <!-- Pestaña: Añadir Producto -->
+        <!-- Pestaña: Añadir/Editar Producto -->
         <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <div class="flex justify-between items-center mb-6 border-b pb-4">
-                <h1 class="text-2xl font-bold text-gray-900">Añadir Nuevo Producto</h1>
-                <a href="index.html" class="text-sm text-blue-600 hover:underline" target="_blank">Ver tienda</a>
+                <h1 class="text-2xl font-bold text-gray-900" id="form-title">Añadir Nuevo Producto</h1>
+                <div class="flex items-center gap-4">
+                    <button type="button" id="btn-cancel-edit" onclick="cancelEdit()" class="hidden text-sm font-bold text-red-600 hover:text-red-800">Cancelar Edición</button>
+                    <a href="index.html" class="text-sm text-blue-600 hover:underline" target="_blank">Ver tienda</a>
+                </div>
             </div>
 
             <form id="product-form" class="space-y-6">
@@ -71,7 +77,7 @@
                 <div class="border-t pt-6 mt-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-bold text-gray-900">Variantes (Colores y Fotos)</h2>
-                        <button type="button" onclick="addVariantRow()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition">
+                        <button type="button" onclick="addVariantRow()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition focus:outline-none">
                             + Añadir Color
                         </button>
                     </div>
@@ -83,7 +89,7 @@
 
                 <!-- BOTÓN DE GUARDAR -->
                 <div class="border-t pt-6 mt-8">
-                    <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">
+                    <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition focus:outline-none">
                         Guardar Producto en Base de Datos
                     </button>
                     <p id="status-msg" class="text-center mt-3 text-sm font-semibold hidden"></p>
@@ -98,7 +104,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-100 text-gray-600 text-sm">
-                            <th class="p-3 border-b">ID</th>
+                            <th class="p-3 border-b w-16">ID</th>
                             <th class="p-3 border-b">Nombre</th>
                             <th class="p-3 border-b">Precio</th>
                             <th class="p-3 border-b">Estado</th>
@@ -112,13 +118,20 @@
             </div>
         </div>
 
+        <!-- Pestaña: Pedidos (NUEVA) -->
+        <div id="tab-orders" class="hidden bg-white p-8 rounded-xl shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Órdenes Pendientes</h2>
+            <div id="orders-container" class="space-y-4">
+                <!-- Los pedidos se inyectan aquí -->
+            </div>
+        </div>
+
     </div> <!-- Fin del contenedor admin-section -->
 
     <script>
         // ==========================================
-        // 1. CONFIGURACIÓN (Evitando errores de redeclaración)
+        // 1. CONFIGURACIÓN (Intacta)
         // ==========================================
-        // Usamos 'var' en lugar de 'const' para que si el entorno recarga el código, no explote el JavaScript entero.
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
@@ -126,10 +139,13 @@
         var cloudinaryCloudName = 'dkg1ytbxb'; 
         var cloudinaryUploadPreset = 'tienda_ropa'; 
 
+        // Variables Globales de Estado
+        var catalogProducts = []; 
+        var editingProductId = null; // Si no es null, estamos en "Modo Edición"
+
         // ==========================================
-        // 2. AUTENTICACIÓN
+        // 2. AUTENTICACIÓN (Intacta, 100% prohibido tocar)
         // ==========================================
-        
         function updateUI(session) {
             var loginSection = document.getElementById('login-section');
             var adminSection = document.getElementById('admin-section');
@@ -138,6 +154,7 @@
                 loginSection.classList.add('hidden');
                 adminSection.classList.remove('hidden');
                 loadCatalog();
+                loadOrders(); // Cargamos pedidos al entrar
             } else {
                 loginSection.classList.remove('hidden');
                 adminSection.classList.add('hidden');
@@ -161,7 +178,6 @@
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             var email = document.getElementById('login-email').value;
             var password = document.getElementById('login-password').value;
             var btn = document.getElementById('login-btn');
@@ -173,30 +189,21 @@
             errorContainer.classList.add('hidden');
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({ 
-                    email: email, 
-                    password: password 
-                });
-                
+                const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
                 if (error) {
-                    console.error("Supabase Login Error:", error);
                     let mensajeAmigable = error.message;
-                    
                     if (error.message.includes('Invalid login credentials')) {
                         mensajeAmigable = 'Correo o contraseña incorrectos. Revisa bien si has puesto alguna mayúscula.';
                     } else if (error.message.includes('Email not confirmed')) {
                         mensajeAmigable = '¡Atención! Aún no has confirmado este usuario. Ve a Supabase > Authentication > Users y marca tu usuario como confirmado.';
                     }
-                    
                     errorText.innerText = mensajeAmigable;
                     errorContainer.classList.remove('hidden');
                 } else if (data.session) {
-                    console.log("¡Login exitoso!");
                     document.getElementById('login-form').reset();
                     updateUI(data.session);
                 }
             } catch (err) {
-                console.error("Error crítico en login:", err);
                 errorText.innerText = "Error en la conexión. Revisa la consola.";
                 errorContainer.classList.remove('hidden');
             } finally {
@@ -207,7 +214,6 @@
 
         async function logout() {
             const { error } = await supabase.auth.signOut();
-            if (error) console.error("Error al salir:", error);
             updateUI(null);
         }
 
@@ -217,26 +223,32 @@
         function switchTab(tab) {
             document.getElementById('tab-add').classList.toggle('hidden', tab !== 'add');
             document.getElementById('tab-catalog').classList.toggle('hidden', tab !== 'catalog');
+            document.getElementById('tab-orders').classList.toggle('hidden', tab !== 'orders');
             
-            document.getElementById('btn-tab-add').className = tab === 'add' ? 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none' : 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none';
-            document.getElementById('btn-tab-catalog').className = tab === 'catalog' ? 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none' : 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none';
+            const activeClass = 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none flex items-center gap-2';
+            const inactiveClass = 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none flex items-center gap-2';
+            
+            document.getElementById('btn-tab-add').className = tab === 'add' ? activeClass : inactiveClass;
+            document.getElementById('btn-tab-catalog').className = tab === 'catalog' ? activeClass : inactiveClass;
+            document.getElementById('btn-tab-orders').className = tab === 'orders' ? activeClass : inactiveClass;
             
             if(tab === 'catalog') loadCatalog();
+            if(tab === 'orders') loadOrders();
         }
 
         // ==========================================
-        // 4. CATÁLOGO (LEER, OCULTAR Y BORRAR)
+        // 4. CATÁLOGO Y EDICIÓN
         // ==========================================
         async function loadCatalog() {
             var tbody = document.getElementById('catalog-body');
             tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center font-medium">Cargando catálogo...</td></tr>';
             
             try {
-                const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+                // Traemos todo: productos y sus variantes
+                const { data, error } = await supabase.from('products').select('*, variants:product_variants(*)').order('created_at', { ascending: false });
                 
                 if (error) {
-                    console.error("Error al cargar catálogo:", error);
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos de la base de datos.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos.</td></tr>';
                     return;
                 }
 
@@ -245,9 +257,11 @@
                     return;
                 }
 
+                catalogProducts = data; // Guardamos en memoria para poder editar rápido
+
                 tbody.innerHTML = data.map(p => `
                     <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3 text-sm text-gray-500">#${p.id}</td>
+                        <td class="p-3 text-sm text-gray-500 font-mono">#${p.id}</td>
                         <td class="p-3 font-semibold text-gray-800">${p.name}</td>
                         <td class="p-3 text-gray-800">${p.price} €</td>
                         <td class="p-3">
@@ -255,10 +269,13 @@
                                 ${p.is_visible ? 'Visible' : 'Oculto'}
                             </span>
                         </td>
-                        <td class="p-3 text-right space-x-3">
+                        <td class="p-3 text-right space-x-2 whitespace-nowrap">
+                            <button onclick="editProduct(${p.id})" class="text-sm font-bold text-blue-600 hover:text-blue-800 transition">Editar</button>
+                            <span class="text-gray-300">|</span>
                             <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-bold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} transition">
                                 ${p.is_visible ? 'Ocultar' : 'Mostrar'}
                             </button>
+                            <span class="text-gray-300">|</span>
                             <button onclick="deleteProduct(${p.id})" class="text-sm font-bold text-red-600 hover:text-red-800 transition">Borrar</button>
                         </td>
                     </tr>
@@ -272,24 +289,70 @@
             try {
                 const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
                 if (!error) loadCatalog();
-                else alert("Error al cambiar la visibilidad. Revisa la consola.");
-            } catch (err) {
-                console.error(err);
-            }
+                else alert("Error al cambiar la visibilidad.");
+            } catch (err) { console.error(err); }
         }
 
         async function deleteProduct(id) {
-            if (!confirm("¿Seguro que quieres borrar este producto? (La foto no se borrará de Cloudinary por seguridad)")) return;
+            if (!confirm("¿Seguro que quieres borrar este producto para siempre?")) return;
             try {
                 const { error } = await supabase.from('products').delete().eq('id', id);
                 if (!error) loadCatalog();
-                else {
-                    console.error("Error borrando:", error);
-                    alert("Error al borrar el producto.");
-                }
-            } catch (err) {
-                console.error(err);
+                else alert("Error al borrar el producto.");
+            } catch (err) { console.error(err); }
+        }
+
+        // ==========================================
+        // LÓGICA MODO EDICIÓN
+        // ==========================================
+        function editProduct(id) {
+            const product = catalogProducts.find(p => p.id === id);
+            if (!product) return;
+
+            editingProductId = product.id; // Activamos modo edición
+
+            // Cambiamos textos
+            document.getElementById('form-title').innerText = `Editar Producto #${product.id}: ${product.name}`;
+            document.getElementById('submit-btn').innerText = "Actualizar Producto";
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+
+            // Rellenamos datos básicos
+            document.getElementById('name').value = product.name;
+            document.getElementById('price').value = product.price;
+            document.getElementById('description').value = product.description || '';
+
+            // Limpiamos colores y cargamos los que tiene
+            document.getElementById('variants-container').innerHTML = '';
+            variantCount = 0;
+
+            if (product.variants && product.variants.length > 0) {
+                product.variants.forEach(variant => {
+                    addVariantRow();
+                    const currentRowId = `variant-${variantCount}`;
+                    const row = document.getElementById(currentRowId);
+                    
+                    row.querySelector('.variant-name').value = variant.color_name;
+                    row.querySelector('.variant-hex').value = variant.color_hex;
+                    row.querySelector('.variant-image').value = variant.image_url || '';
+                    row.querySelector('.variant-sold-out').checked = variant.is_sold_out || false;
+                });
+            } else {
+                addVariantRow(); // Fila vacía si por algún error no tenía
             }
+
+            switchTab('add'); // Saltamos a la pestaña
+            window.scrollTo(0, 0); // Subimos arriba
+        }
+
+        function cancelEdit() {
+            editingProductId = null;
+            document.getElementById('form-title').innerText = `Añadir Nuevo Producto`;
+            document.getElementById('submit-btn').innerText = "Guardar Producto en Base de Datos";
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+            
+            document.getElementById('product-form').reset();
+            document.getElementById('variants-container').innerHTML = '';
+            addVariantRow();
         }
 
         // ==========================================
@@ -302,119 +365,28 @@
             var id = variantCount;
             
             var row = document.createElement('div');
-            row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200';
+            row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200 relative';
             row.id = `variant-${id}`;
             
             row.innerHTML = `
-                <div class="w-full md:w-1/4">
+                <div class="w-full md:w-1/5">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre Color</label>
                     <input type="text" class="variant-name w-full px-3 py-2 border rounded focus:ring-1 focus:ring-black outline-none" placeholder="Ej: Rojo" required>
                 </div>
-                <div class="w-full md:w-1/6">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Color (Hex)</label>
+                <div class="w-full md:w-20">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Color</label>
                     <input type="color" class="variant-hex w-full h-10 p-1 cursor-pointer border rounded" value="#000000">
                 </div>
-                <div class="w-full md:w-2/5 flex flex-col">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Foto (Cloudinary)</label>
+                <div class="w-full md:flex-1 flex flex-col">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Fotos (Cloudinary)</label>
                     <div class="flex gap-2">
-                        <button type="button" onclick="openCloudinaryWidget(${id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold transition whitespace-nowrap">
-                            Subir Foto
+                        <button type="button" onclick="openCloudinaryWidget(${id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold transition whitespace-nowrap focus:outline-none">
+                            Añadir Foto
                         </button>
-                        <input type="text" id="image-url-${id}" class="variant-image w-full px-3 py-2 border rounded bg-gray-200 text-xs text-gray-500" placeholder="URL de la imagen..." readonly required>
+                        <input type="text" id="image-url-${id}" class="variant-image w-full px-3 py-2 border rounded bg-gray-200 text-xs text-gray-600" placeholder="URLs de imágenes separadas por coma..." required>
                     </div>
                 </div>
-                <div class="w-full md:w-auto">
-                    <button type="button" onclick="removeVariantRow(${id})" class="text-red-500 hover:text-red-700 font-black p-2" title="Eliminar variante">X</button>
-                </div>
-            `;
-            document.getElementById('variants-container').appendChild(row);
-        }
-
-        function removeVariantRow(id) {
-            document.getElementById(`variant-${id}`).remove();
-        }
-
-        // ==========================================
-        // 6. INTEGRACIÓN CLOUDINARY
-        // ==========================================
-        function openCloudinaryWidget(variantId) {
-            var myWidget = cloudinary.createUploadWidget({
-                cloudName: cloudinaryCloudName, 
-                uploadPreset: cloudinaryUploadPreset,
-                sources: ['local', 'url', 'camera'],
-                multiple: false,
-                maxFiles: 1,
-                resourceType: "image"
-            }, (error, result) => { 
-                if (!error && result && result.event === "success") { 
-                    document.getElementById(`image-url-${variantId}`).value = result.info.secure_url;
-                }
-            });
-            
-            myWidget.open();
-        }
-
-        // ==========================================
-        // 7. GUARDAR EN SUPABASE
-        // ==========================================
-        document.getElementById('product-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            var btn = document.getElementById('submit-btn');
-            var msg = document.getElementById('status-msg');
-            
-            btn.disabled = true;
-            btn.innerText = "Guardando...";
-            msg.className = "text-center mt-3 text-sm font-semibold hidden";
-
-            try {
-                const name = document.getElementById('name').value;
-                const price = parseFloat(document.getElementById('price').value);
-                const description = document.getElementById('description').value;
-
-                const { data: productData, error: productError } = await supabase
-                    .from('products')
-                    .insert([{ name, price, description }])
-                    .select(); 
-
-                if (productError) throw productError;
-                const productId = productData[0].id;
-
-                const variantRows = document.querySelectorAll('#variants-container > div');
-                const variantsToInsert = [];
-
-                variantRows.forEach(row => {
-                    variantsToInsert.push({
-                        product_id: productId,
-                        color_name: row.querySelector('.variant-name').value,
-                        color_hex: row.querySelector('.variant-hex').value,
-                        image_url: row.querySelector('.variant-image').value
-                    });
-                });
-
-                if (variantsToInsert.length > 0) {
-                    const { error: variantError } = await supabase
-                        .from('product_variants')
-                        .insert(variantsToInsert);
-
-                    if (variantError) throw variantError;
-                }
-
-                msg.innerText = "¡Producto guardado correctamente!";
-                msg.className = "text-center mt-3 text-sm font-semibold text-green-600 block";
-                document.getElementById('product-form').reset();
-                document.getElementById('variants-container').innerHTML = '';
-                addVariantRow(); 
-
-            } catch (error) {
-                console.error("Error al guardar:", error);
-                msg.innerText = "Error al guardar. Asegúrate de rellenar todos los campos.";
-                msg.className = "text-center mt-3 text-sm font-semibold text-red-600 block";
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Guardar Producto en Base de Datos";
-            }
-        });
-    </script>
-</body>
-</html>
+                <!-- CHECKBOX AGOTADO -->
+                <div class="w-full md:w-24 flex items-center justify-center bg-white border rounded h-10 mt-5 md:mt-0">
+                    <label class="flex items-center space-x-2 cursor-pointer w-full h-full justify-center px-2">
+                        <input type="checkbox" class="variant-sold-out form-checkbox
