@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escaparate | Tienda de Ropa</title>
+    <!-- Tailwind CSS para el diseño rápido y limpio -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        nardo: '#686A6C', // Gris Nardo personalizado
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-nardo min-h-screen font-sans text-gray-800">
+
+    <!-- Cabecera sencilla -->
+    <header class="bg-white/10 backdrop-blur-md shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white tracking-wider uppercase">Streetwear Nardo</h1>
+            <!-- Un icono de carrito de adorno por ahora -->
+            <button class="text-white hover:text-gray-200 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal de Productos -->
+    <main class="max-w-6xl mx-auto px-4 py-12">
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-white mb-2">Novedades</h2>
+            <p class="text-gray-200">Echa un vistazo a las últimas prendas.</p>
+        </div>
+
+        <!-- Cuadrícula de productos (Aquí inyectará JS el contenido) -->
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Los productos se cargarán aquí dinámicamente -->
+        </div>
+    </main>
+
+    <!-- MODAL DEL PRODUCTO (Pantalla completa / emergente) -->
+    <div id="product-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col md:flex-row relative transform scale-95 transition-transform duration-300" id="modal-content">
+            
+            <!-- Botón de cerrar -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-10 bg-white/50 hover:bg-white rounded-full p-2 text-gray-800 transition backdrop-blur-md">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <!-- Zona de la Imagen del Modal -->
+            <div class="w-full md:w-1/2 bg-gray-100 min-h-[300px] flex items-center justify-center relative p-8" id="modal-image-container">
+                <!-- Se inyecta por JS -->
+            </div>
+
+            <!-- Zona de la Info del Modal -->
+            <div class="w-full md:w-1/2 p-8 flex flex-col">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2" id="modal-title">Nombre</h2>
+                <p class="text-2xl font-black text-gray-900 mb-6" id="modal-price">0.00 €</p>
+                
+                <p class="text-gray-600 mb-8 leading-relaxed" id="modal-description">Descripción...</p>
+                
+                <div class="mt-auto">
+                    <p class="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Color seleccionado</p>
+                    <div class="flex gap-3 mb-8" id="modal-colors-container">
+                        <!-- Colores se inyectan por JS -->
+                    </div>
+                    
+                    <button class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors shadow-lg">
+                        Añadir al carrito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Importamos el cliente de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Lógica de la aplicación -->
+    <script>
+        // ==========================================
+        // 0. CONFIGURACIÓN DE SUPABASE
+        // ==========================================
+        // PABLO: Tienes que sustituir esto por la URL de tu proyecto.
+        const supabaseUrl = 'AQUÍ_VA_TU_URL_DE_SUPABASE'; 
+        const supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
+        
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        } catch(e) {
+            console.warn("Falta configurar la URL de Supabase.");
+        }
+
+        // Variable global para guardar los productos reales que vengan de la BD
+        let appProducts = []; 
+        let currentModalProduct = null;
+
+        // Función auxiliar: si un color aún no tiene foto de Cloudinary, mostramos esto
+        const getPlaceholder = (colorHex) => `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="${colorHex}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-lg transition-colors duration-300"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>`;
+
+        // Renderiza la imagen real o el placeholder
+        const renderImage = (variant) => variant.image_url 
+            ? `<img src="${variant.image_url}" alt="Variante" class="w-full h-full object-cover">`
+            : getPlaceholder(variant.color_hex);
+
+        // ==========================================
+        // 2. RENDERIZADO DEL ESCAPARATE
+        // ==========================================
+        function renderProducts(products) {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = ''; 
+
+            if (!products || products.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-gray-200 mt-10 text-lg">No hay productos disponibles ahora mismo.</p>`;
+                return;
+            }
+
+            products.forEach(product => {
+                // Si el producto no tiene variantes (colores), saltamos para evitar errores
+                if (!product.variants || product.variants.length === 0) return;
+
+                const colorsHTML = product.variants.map((variant, index) => 
+                    `<button 
+                        onclick="changeCardImage(${product.id}, ${index}, event)" 
+                        class="w-6 h-6 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform shadow-sm focus:outline-none focus:border-black" 
+                        style="background-color: ${variant.color_hex};" 
+                        title="${variant.color_name}"></button>`
+                ).join('');
+
+                const defaultVariant = product.variants[0];
+
+                const productCard = `
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer group" onclick="openModal(${product.id})">
+                        
+                        <!-- Imagen de la tarjeta -->
+                        <div class="aspect-[4/3] bg-gray-50 flex items-center justify-center border-b border-gray-100 relative overflow-hidden" id="card-img-container-${product.id}">
+                            ${renderImage(defaultVariant)}
+                        </div>
+
+                        <!-- Info del Producto -->
+                        <div class="p-5 flex flex-col flex-grow">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-lg font-bold text-gray-900 group-hover:text-nardo transition-colors">${product.name}</h3>
+                                <p class="text-lg font-black text-gray-900">${product.price}€</p>
+                            </div>
+                            
+                            <div class="mt-auto pt-4 flex items-center justify-between">
+                                <div class="flex gap-2">
+                                    ${colorsHTML}
+                                </div>
+                                <button class="text-sm font-semibold text-nardo hover:text-black transition-colors" onclick="openModal(${product.id}); event.stopPropagation();">
+                                    Ver producto &rarr;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += productCard;
+            });
+        }
+
+        // ==========================================
+        // 3. LÓGICA DE INTERACCIÓN
+        // ==========================================
+        function changeCardImage(productId, variantIndex, event) {
+            if(event) event.stopPropagation(); 
+            
+            const product = appProducts.find(p => p.id === productId);
+            const container = document.getElementById(`card-img-container-${productId}`);
+            if (product && container) {
+                container.innerHTML = renderImage(product.variants[variantIndex]);
+            }
+        }
+
+        function changeModalImage(variantIndex) {
+            if (!currentModalProduct) return;
+            
+            const variant = currentModalProduct.variants[variantIndex];
+            document.getElementById('modal-image-container').innerHTML = renderImage(variant);
+            
+            const buttons = document.querySelectorAll('.modal-color-btn');
+            buttons.forEach((btn, idx) => {
+                if (idx === variantIndex) {
+                    btn.classList.add('ring-2', 'ring-offset-2', 'ring-black');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black');
+                }
+            });
+        }
+
+        function openModal(productId) {
+            const product = appProducts.find(p => p.id === productId);
+            if (!product) return;
+            
+            currentModalProduct = product;
+
+            document.getElementById('modal-title').innerText = product.name;
+            document.getElementById('modal-price').innerText = `${product.price} €`;
+            document.getElementById('modal-description').innerText = product.description || 'Sin descripción';
+            
+            const colorsHTML = product.variants.map((variant, index) => 
+                `<button 
+                    onclick="changeModalImage(${index})" 
+                    class="modal-color-btn w-8 h-8 rounded-full border border-gray-200 hover:scale-110 transition-all shadow-sm focus:outline-none" 
+                    style="background-color: ${variant.color_hex};" 
+                    title="${variant.color_name}"></button>`
+            ).join('');
+            document.getElementById('modal-colors-container').innerHTML = colorsHTML;
+
+            const modal = document.getElementById('product-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+
+            changeModalImage(0);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('product-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentModalProduct = null;
+            }, 300);
+        }
+
+        document.getElementById('product-modal').addEventListener('click', function(event) {
+            if (event.target === this) closeModal();
+        });
+
+        // ==========================================
+        // 4. CONEXIÓN A SUPABASE
+        // ==========================================
+        async function fetchAndLoadProducts() {
+            // Si no has puesto la URL, mostramos un mensaje en pantalla
+            if (supabaseUrl === 'AQUÍ_VA_TU_URL_DE_SUPABASE' || !supabase) {
+                document.getElementById('product-grid').innerHTML = 
+                    `<div class="col-span-full bg-red-500/20 border border-red-500 p-4 rounded-xl text-center text-white">
+                        <strong>Falta configurar Supabase:</strong> Tienes que poner tu URL en el código (línea de <code>const supabaseUrl</code>).
+                    </div>`;
+                return;
+            }
+
+            try {
+                // Hacemos una consulta relacional: Traemos el producto y sus variantes a la vez
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('*, variants:product_variants(*)');
+
+                if (error) throw error;
+
+                appProducts = data; // Guardamos los datos reales en nuestra variable global
+                renderProducts(appProducts);
+
+            } catch (error) {
+                console.error("Error al cargar desde Supabase:", error);
+                document.getElementById('product-grid').innerHTML = 
+                    `<p class="col-span-full text-center text-white">Error al conectar con la base de datos.</p>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchAndLoadProducts);
+
+    </script>
+</body>
+</html>
