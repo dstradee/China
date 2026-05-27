@@ -29,7 +29,7 @@
         </form>
     </div>
 
-    <!-- SECCIÓN DE ADMINISTRADOR (Oculta hasta que inicies sesión) -->
+    <!-- SECCIÓN DE ADMINISTRADOR -->
     <div id="admin-section" class="hidden max-w-5xl mx-auto">
         
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
@@ -41,10 +41,13 @@
             <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
         </div>
 
-        <!-- PESTAÑA: AÑADIR PRODUCTO -->
+        <!-- PESTAÑA: AÑADIR / EDITAR PRODUCTO -->
         <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <h1 class="text-2xl font-bold text-gray-900 mb-6" id="form-title">Añadir Nuevo Producto</h1>
             <form id="product-form" class="space-y-6">
+                <!-- Campo oculto para saber si estamos editando o creando -->
+                <input type="hidden" id="product-id">
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="col-span-1 md:col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre del producto *</label>
@@ -60,7 +63,7 @@
                     <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none"></textarea>
                 </div>
                 <div id="variants-container" class="space-y-4"></div>
-                <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg">Guardar</button>
+                <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Guardar Producto</button>
             </form>
         </div>
 
@@ -79,7 +82,7 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE (Tus claves originales)
+        // CONFIGURACIÓN SUPABASE
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
@@ -101,7 +104,7 @@
                 btn.innerText = 'Entrar';
                 btn.disabled = false;
             } else {
-                location.reload(); // Recarga para forzar estado
+                location.reload(); 
             }
         });
 
@@ -111,7 +114,7 @@
             location.reload(); 
         }
 
-        // CARGAR SESIÓN INICIAL AL ARRANCAR
+        // CARGAR SESIÓN INICIAL
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 document.getElementById('login-section').classList.add('hidden');
@@ -119,15 +122,12 @@
             }
         });
 
-
-        // --- LÓGICA DE PESTAÑAS (TABS) FUNCIONAL ---
+        // --- LÓGICA DE PESTAÑAS (TABS) ---
         function switchTab(tabId) {
-            // 1. Ocultar todos los contenidos de las pestañas
             document.getElementById('tab-add').classList.add('hidden');
             document.getElementById('tab-catalog').classList.add('hidden');
             document.getElementById('tab-orders').classList.add('hidden');
 
-            // 2. Quitar estilos activos de todos los botones
             const btnAdd = document.getElementById('btn-tab-add');
             const btnCatalog = document.getElementById('btn-tab-catalog');
             const btnOrders = document.getElementById('btn-tab-orders');
@@ -136,22 +136,105 @@
                 btn.className = 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none'; 
             });
 
-            // 3. Mostrar el contenido de la pestaña seleccionada
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn-tab-${tabId}`).className = 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none'; 
 
-            // 4. Poner estilo activo al botón seleccionado
-            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
-            activeBtn.className = 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none'; 
-
-            // 5. Cargar los datos desde Supabase según la pestaña seleccionada
-            if (tabId === 'catalog') {
+            // Si cambiamos a 'add' manualmente, limpiamos el formulario por si acaso estaba en modo "Editar"
+            if (tabId === 'add') {
+                if(!document.getElementById('product-id').value) resetProductForm();
+            } else if (tabId === 'catalog') {
                 loadCatalog();
             } else if (tabId === 'orders') {
                 loadOrders();
             }
         }
 
-        // --- CARGAR CATÁLOGO DESDE LA TABLA 'products' ---
+        // --- GESTIÓN DE PRODUCTOS (GUARDAR / EDITAR / ELIMINAR) ---
+        
+        // Limpiar el formulario
+        function resetProductForm() {
+            document.getElementById('product-form').reset();
+            document.getElementById('product-id').value = '';
+            document.getElementById('form-title').innerText = 'Añadir Nuevo Producto';
+        }
+
+        // Guardar o Actualizar Producto
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('product-id').value;
+            const name = document.getElementById('name').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const description = document.getElementById('description').value;
+            const btn = document.getElementById('submit-btn');
+            
+            btn.innerText = 'Guardando...';
+            btn.disabled = true;
+
+            // Preparamos los datos para la BD (Asegúrate de que los nombres coincidan con tus columnas)
+            const productData = { 
+                name: name, 
+                price: price, 
+                description: description 
+            };
+
+            let errorResult;
+
+            if (id) {
+                // Si hay ID, estamos actualizando
+                const { error } = await supabase.from('products').update(productData).eq('id', id);
+                errorResult = error;
+            } else {
+                // Si no hay ID, creamos uno nuevo
+                const { error } = await supabase.from('products').insert([productData]);
+                errorResult = error;
+            }
+
+            if (errorResult) {
+                alert('Error al guardar: ' + errorResult.message);
+            } else {
+                alert(id ? 'Producto actualizado correctamente' : 'Producto añadido correctamente');
+                resetProductForm();
+                switchTab('catalog'); // Te lleva al catálogo para que veas los cambios
+            }
+
+            btn.innerText = 'Guardar Producto';
+            btn.disabled = false;
+        });
+
+        // Cargar datos en el formulario para editar
+        async function editProduct(id) {
+            const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+            if (error) {
+                alert("Error al cargar producto: " + error.message);
+                return;
+            }
+            
+            // Rellenar formulario
+            document.getElementById('product-id').value = data.id;
+            document.getElementById('name').value = data.name || data.nombre || '';
+            document.getElementById('price').value = data.price || data.precio || '';
+            document.getElementById('description').value = data.description || data.descripcion || '';
+            
+            // Cambiar título y de pestaña
+            document.getElementById('form-title').innerText = 'Editar Producto';
+            switchTab('add');
+        }
+
+        // Eliminar producto
+        async function deleteProduct(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+                const { error } = await supabase.from('products').delete().eq('id', id);
+                if (error) {
+                    alert('Error al eliminar: ' + error.message);
+                } else {
+                    loadCatalog(); // Recargar la tabla
+                }
+            }
+        }
+
+
+        // --- CARGAR CATÁLOGO ---
         async function loadCatalog() {
             const tbody = document.getElementById('catalog-body');
             tbody.innerHTML = '<tr><td class="p-4 text-gray-500">Cargando productos...</td></tr>';
@@ -182,8 +265,8 @@
                         <td class="p-4">${product.name || product.nombre || 'Sin nombre'}</td>
                         <td class="p-4 font-medium">${product.price || product.precio || '0.00'} €</td>
                         <td class="p-4">
-                            <button class="text-blue-600 hover:underline mr-4">Editar</button>
-                            <button class="text-red-600 hover:underline">Eliminar</button>
+                            <button onclick="editProduct('${product.id}')" class="text-blue-600 hover:underline mr-4 font-semibold">Editar</button>
+                            <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:underline font-semibold">Eliminar</button>
                         </td>
                     </tr>
                 `;
@@ -192,7 +275,7 @@
             tbody.innerHTML = html;
         }
 
-        // --- CARGAR PEDIDOS DESDE LA TABLA 'orders' ---
+        // --- CARGAR PEDIDOS ---
         async function loadOrders() {
             const container = document.getElementById('orders-container');
             container.innerHTML = '<p class="text-gray-500">Cargando pedidos...</p>';
@@ -213,9 +296,8 @@
                 <table class="w-full text-left border-collapse mt-4">
                     <thead>
                         <tr class="bg-gray-50 border-b">
-                            <th class="p-4 font-semibold text-gray-700">ID</th>
-                            <th class="p-4 font-semibold text-gray-700">Fecha</th>
-                            <th class="p-4 font-semibold text-gray-700">Cliente</th>
+                            <th class="p-4 font-semibold text-gray-700">ID / Fecha</th>
+                            <th class="p-4 font-semibold text-gray-700">Info Cliente</th>
                             <th class="p-4 font-semibold text-gray-700">Total</th>
                             <th class="p-4 font-semibold text-gray-700">Estado</th>
                         </tr>
@@ -224,24 +306,52 @@
             `;
 
             data.forEach(order => {
-                const date = new Date(order.created_at).toLocaleDateString('es-ES');
+                const date = new Date(order.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const statusStr = order.status || order.estado || '';
+                
+                // Generar el badge y botón de estado
+                let statusHtml = '';
+                if (statusStr.toLowerCase() === 'completado') {
+                    statusHtml = `<span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">Completado</span>`;
+                } else {
+                    statusHtml = `
+                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block">Pendiente</span>
+                        <button onclick="markOrderCompleted('${order.id}')" class="block text-xs bg-black text-white px-3 py-1.5 rounded hover:bg-gray-800 transition shadow-sm font-semibold">Marcar Completado</button>
+                    `;
+                }
+
                 html += `
                     <tr class="border-b hover:bg-gray-50 transition">
-                        <td class="p-4 text-sm text-gray-500">#${order.id}</td>
-                        <td class="p-4">${date}</td>
-                        <td class="p-4">${order.customer_name || order.cliente || 'Desconocido'}</td>
-                        <td class="p-4 font-medium">${order.total_price || order.total || order.precio_total || '0.00'} €</td>
                         <td class="p-4">
-                            <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
-                                ${order.status || order.estado || 'Completado'}
-                            </span>
+                            <span class="text-sm font-bold block">#${order.id}</span>
+                            <span class="text-xs text-gray-500 block mt-1">${date}</span>
                         </td>
+                        <td class="p-4">
+                            <div class="font-bold text-gray-900">${order.customer_name || order.cliente || 'Desconocido'}</div>
+                            <div class="text-sm text-gray-600 mt-1">📧 ${order.email || order.correo || 'Sin correo'}</div>
+                            <div class="text-sm text-gray-600 mt-0.5">📞 ${order.phone || order.telefono || 'Sin teléfono'}</div>
+                        </td>
+                        <td class="p-4 font-bold text-lg">${order.total_price || order.total || order.precio_total || '0.00'} €</td>
+                        <td class="p-4">${statusHtml}</td>
                     </tr>
                 `;
             });
 
             html += `</tbody></table>`;
             container.innerHTML = html;
+        }
+
+        // Marcar un pedido como completado en la BD
+        async function markOrderCompleted(id) {
+            if (confirm('¿Marcar este pedido como Completado?')) {
+                // He puesto 'status' ya que la tabla se llama orders, si la columna se llama 'estado' cambialo aquí.
+                const { error } = await supabase.from('orders').update({ status: 'Completado' }).eq('id', id);
+                if (error) {
+                    alert('Error al actualizar el pedido: ' + error.message);
+                } else {
+                    loadOrders(); // Recarga la vista de pedidos para ver el botón verde
+                }
+            }
         }
 
         // --- FUNCIONES MANTENIDAS (Para que el resto no de fallos al integrarlo a futuro) ---
