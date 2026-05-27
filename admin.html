@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin | Éxito con Javi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Script del Widget de Cloudinary -->
     <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
-    <!-- Script de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-8 font-sans text-gray-800">
@@ -41,7 +39,7 @@
             <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
         </div>
 
-        <!-- Pestaña: Añadir Producto (El formulario de antes) -->
+        <!-- Pestaña: Añadir Producto -->
         <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <div class="flex justify-between items-center mb-6 border-b pb-4">
                 <h1 class="text-2xl font-bold text-gray-900">Añadir Nuevo Producto</h1>
@@ -49,20 +47,49 @@
             </div>
 
             <form id="product-form" class="space-y-6">
+                <!-- DATOS BÁSICOS DEL PRODUCTO -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre del producto *</label>
+                        <input type="text" id="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="Ej: Zapatillas Urban">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Precio (€) *</label>
+                        <input type="number" id="price" step="0.01" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="24.99">
+                    </div>
                 </div>
-            </div>
 
-            <!-- BOTÓN DE GUARDAR -->
-            <div class="border-t pt-6 mt-8">
-                <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">
-                    Guardar Producto en Base de Datos
-                </button>
-                <p id="status-msg" class="text-center mt-3 text-sm font-semibold hidden"></p>
-            </div>
-        </form>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
+                    <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="Describe el producto..."></textarea>
+                </div>
+
+                <!-- VARIANTES (COLORES Y FOTOS) -->
+                <div class="border-t pt-6 mt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-900">Variantes (Colores y Fotos)</h2>
+                        <button type="button" onclick="addVariantRow()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition">
+                            + Añadir Color
+                        </button>
+                    </div>
+                    
+                    <div id="variants-container" class="space-y-4">
+                        <!-- Las filas de variantes se insertan aquí -->
+                    </div>
+                </div>
+
+                <!-- BOTÓN DE GUARDAR -->
+                <div class="border-t pt-6 mt-8">
+                    <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">
+                        Guardar Producto en Base de Datos
+                    </button>
+                    <p id="status-msg" class="text-center mt-3 text-sm font-semibold hidden"></p>
+                </div>
+            </form>
         </div>
 
-        <!-- Pestaña: Catálogo (Nueva) -->
+        <!-- Pestaña: Catálogo -->
         <div id="tab-catalog" class="hidden bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Tus Productos</h2>
             <div class="overflow-x-auto">
@@ -87,34 +114,49 @@
 
     <script>
         // ==========================================
-        // 1. CONFIGURACIÓN (¡RELLENAR!)
+        // 1. CONFIGURACIÓN
         // ==========================================
-        // SUPABASE
         const supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         const supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        // CLOUDINARY
-        const cloudinaryCloudName = 'dkg1ytbxb'; // Ya puesto
-        const cloudinaryUploadPreset = 'tienda_ropa'; // Ya puesto
+        const cloudinaryCloudName = 'dkg1ytbxb'; 
+        const cloudinaryUploadPreset = 'tienda_ropa'; 
 
         // ==========================================
-        // 1.5. AUTENTICACIÓN Y PESTAÑAS
+        // 2. AUTENTICACIÓN MEJORADA
         // ==========================================
         
-        // Magia de Supabase: Comprueba si ya estás logueado
-        supabase.auth.onAuthStateChange((event, session) => {
+        // Función para actualizar la interfaz según si hay sesión o no
+        function updateUI(session) {
             if (session) {
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-section').classList.remove('hidden');
-                loadCatalog(); // Carga la lista de ropa
+                loadCatalog(); // Carga la lista de ropa al entrar
             } else {
                 document.getElementById('login-section').classList.remove('hidden');
                 document.getElementById('admin-section').classList.add('hidden');
             }
+        }
+
+        // Comprobación inicial forzada nada más cargar la página
+        async function checkInitialSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            updateUI(session);
+        }
+
+        // Listener para cambios de estado (cuando te logueas o deslogueas)
+        supabase.auth.onAuthStateChange((_event, session) => {
+            updateUI(session);
         });
 
-        // Intentar hacer Login
+        // Ejecutar comprobación al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            checkInitialSession();
+            addVariantRow(); // Añadir la primera fila de variantes por defecto
+        });
+
+        // Login form
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -123,6 +165,7 @@
             const errorMsg = document.getElementById('login-error');
             
             btn.innerText = 'Comprobando...';
+            btn.disabled = true;
             errorMsg.classList.add('hidden');
 
             const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -131,15 +174,18 @@
                 errorMsg.innerText = 'Correo o contraseña incorrectos.';
                 errorMsg.classList.remove('hidden');
             }
+            
             btn.innerText = 'Entrar';
+            btn.disabled = false;
         });
 
-        // Cerrar sesión
         async function logout() {
             await supabase.auth.signOut();
         }
 
-        // Cambiar entre la pestaña de Añadir y el Catálogo
+        // ==========================================
+        // 3. NAVEGACIÓN (PESTAÑAS)
+        // ==========================================
         function switchTab(tab) {
             document.getElementById('tab-add').classList.toggle('hidden', tab !== 'add');
             document.getElementById('tab-catalog').classList.toggle('hidden', tab !== 'catalog');
@@ -151,63 +197,63 @@
         }
 
         // ==========================================
-        // 1.6. CATÁLOGO (LEER, OCULTAR Y BORRAR)
+        // 4. CATÁLOGO (LEER, OCULTAR Y BORRAR)
         // ==========================================
         async function loadCatalog() {
             const tbody = document.getElementById('catalog-body');
-            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Cargando catálogo...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center font-medium">Cargando catálogo...</td></tr>';
             
-            // Pedimos todos los productos
             const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
             
             if (error) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">Error de conexión.</td></tr>';
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos.</td></tr>';
                 return;
             }
 
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay productos subidos.</td></tr>';
                 return;
             }
 
-            // Pintamos la tabla
             tbody.innerHTML = data.map(p => `
-                <tr class="border-b hover:bg-gray-50">
+                <tr class="border-b hover:bg-gray-50 transition-colors">
                     <td class="p-3 text-sm text-gray-500">#${p.id}</td>
-                    <td class="p-3 font-semibold">${p.name}</td>
-                    <td class="p-3">${p.price} €</td>
+                    <td class="p-3 font-semibold text-gray-800">${p.name}</td>
+                    <td class="p-3 text-gray-800">${p.price} €</td>
                     <td class="p-3">
-                        <span class="px-2 py-1 text-xs rounded-full ${p.is_visible ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}">
+                        <span class="px-2 py-1 text-xs rounded-full font-medium ${p.is_visible ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}">
                             ${p.is_visible ? 'Visible' : 'Oculto'}
                         </span>
                     </td>
                     <td class="p-3 text-right space-x-3">
-                        <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-semibold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-800' : 'text-green-600 hover:text-green-800'}">
+                        <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-bold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} transition">
                             ${p.is_visible ? 'Ocultar' : 'Mostrar'}
                         </button>
-                        <button onclick="deleteProduct(${p.id})" class="text-sm font-semibold text-red-600 hover:text-red-800">Borrar</button>
+                        <button onclick="deleteProduct(${p.id})" class="text-sm font-bold text-red-600 hover:text-red-800 transition">Borrar</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        // Función para alternar entre visible y oculto
         async function toggleVisibility(id, currentStatus) {
             const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
             if (!error) loadCatalog();
             else alert("Error al cambiar visibilidad");
         }
 
-        // Función para borrar para siempre
         async function deleteProduct(id) {
-            if (!confirm("¿Seguro que quieres borrar este producto? Se eliminará de la base de datos para siempre.")) return;
+            if (!confirm("¿Seguro que quieres borrar este producto? (La foto no se borrará de Cloudinary por seguridad)")) return;
             const { error } = await supabase.from('products').delete().eq('id', id);
             if (!error) loadCatalog();
-            else alert("Error al borrar el producto");
+            else {
+                console.error(error);
+                alert("Error al borrar el producto");
+            }
         }
 
         // ==========================================
-        // 2. GESTIÓN DE VARIANTES (INTERFAZ)
+        // 5. GESTIÓN DE VARIANTES (INTERFAZ)
         // ==========================================
         let variantCount = 0;
 
@@ -216,7 +262,7 @@
             const id = variantCount;
             
             const row = document.createElement('div');
-            row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border';
+            row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200';
             row.id = `variant-${id}`;
             
             row.innerHTML = `
@@ -231,14 +277,14 @@
                 <div class="w-full md:w-2/5 flex flex-col">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Foto (Cloudinary)</label>
                     <div class="flex gap-2">
-                        <button type="button" onclick="openCloudinaryWidget(${id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition whitespace-nowrap">
+                        <button type="button" onclick="openCloudinaryWidget(${id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold transition whitespace-nowrap">
                             Subir Foto
                         </button>
                         <input type="text" id="image-url-${id}" class="variant-image w-full px-3 py-2 border rounded bg-gray-200 text-xs text-gray-500" placeholder="URL de la imagen..." readonly required>
                     </div>
                 </div>
                 <div class="w-full md:w-auto">
-                    <button type="button" onclick="removeVariantRow(${id})" class="text-red-500 hover:text-red-700 font-bold p-2" title="Eliminar variante">X</button>
+                    <button type="button" onclick="removeVariantRow(${id})" class="text-red-500 hover:text-red-700 font-black p-2" title="Eliminar variante">X</button>
                 </div>
             `;
             document.getElementById('variants-container').appendChild(row);
@@ -248,18 +294,10 @@
             document.getElementById(`variant-${id}`).remove();
         }
 
-        // Añadimos una fila vacía al cargar
-        document.addEventListener('DOMContentLoaded', addVariantRow);
-
         // ==========================================
-        // 3. INTEGRACIÓN CLOUDINARY
+        // 6. INTEGRACIÓN CLOUDINARY
         // ==========================================
         function openCloudinaryWidget(variantId) {
-            if (cloudinaryCloudName === 'TU_CLOUD_NAME') {
-                alert("¡Eh! Configura primero las claves de Cloudinary en el código.");
-                return;
-            }
-
             let myWidget = cloudinary.createUploadWidget({
                 cloudName: cloudinaryCloudName, 
                 uploadPreset: cloudinaryUploadPreset,
@@ -269,8 +307,6 @@
                 resourceType: "image"
             }, (error, result) => { 
                 if (!error && result && result.event === "success") { 
-                    console.log('Imagen subida con éxito: ', result.info);
-                    // Ponemos la URL segura en el campo de texto de la variante correspondiente
                     document.getElementById(`image-url-${variantId}`).value = result.info.secure_url;
                 }
             });
@@ -279,7 +315,7 @@
         }
 
         // ==========================================
-        // 4. GUARDAR EN SUPABASE
+        // 7. GUARDAR EN SUPABASE
         // ==========================================
         document.getElementById('product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -292,21 +328,18 @@
             msg.className = "text-center mt-3 text-sm font-semibold hidden";
 
             try {
-                // 1. Recoger datos básicos
                 const name = document.getElementById('name').value;
                 const price = parseFloat(document.getElementById('price').value);
                 const description = document.getElementById('description').value;
 
-                // 2. Insertar Producto en Supabase
                 const { data: productData, error: productError } = await supabase
                     .from('products')
                     .insert([{ name, price, description }])
-                    .select(); // El .select() es vital para que nos devuelva el ID que le ha asignado
+                    .select(); 
 
                 if (productError) throw productError;
                 const productId = productData[0].id;
 
-                // 3. Recoger datos de las variantes y preparar el array para Supabase
                 const variantRows = document.querySelectorAll('#variants-container > div');
                 const variantsToInsert = [];
 
@@ -319,7 +352,6 @@
                     });
                 });
 
-                // 4. Insertar Variantes en Supabase
                 if (variantsToInsert.length > 0) {
                     const { error: variantError } = await supabase
                         .from('product_variants')
@@ -328,16 +360,15 @@
                     if (variantError) throw variantError;
                 }
 
-                // ÉXITO
                 msg.innerText = "¡Producto guardado correctamente!";
                 msg.className = "text-center mt-3 text-sm font-semibold text-green-600 block";
                 document.getElementById('product-form').reset();
                 document.getElementById('variants-container').innerHTML = '';
-                addVariantRow(); // Ponemos una fila limpia
+                addVariantRow(); 
 
             } catch (error) {
                 console.error("Error al guardar:", error);
-                msg.innerText = "Error al guardar. Revisa la consola (F12).";
+                msg.innerText = "Error al guardar. Asegúrate de rellenar todos los campos.";
                 msg.className = "text-center mt-3 text-sm font-semibold text-red-600 block";
             } finally {
                 btn.disabled = false;
