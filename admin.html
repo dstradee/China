@@ -1,420 +1,364 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin | Éxito con Javi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-gray-100 min-h-screen p-8 font-sans text-gray-800">
+<!-- ... existing code ... -->
+    <header class="bg-white/10 backdrop-blur-md shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white tracking-wider uppercase">Éxito con Javi</h1>
+            <!-- Botón de carrito actualizado con contador y función -->
+            <button onclick="toggleCart()" class="text-white hover:text-gray-200 transition focus:outline-none relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden">0</span>
+            </button>
+        </div>
+    </header>
 
-    <!-- SECCIÓN DE LOGIN -->
-    <div id="login-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-200 mt-20">
-        <h2 class="text-2xl font-bold text-center mb-6">Acceso Administrador</h2>
-        <form id="login-form" class="space-y-4">
-            <div>
-                <label class="block text-sm font-semibold mb-1">Email</label>
-                <input type="email" id="login-email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" autocomplete="username">
+    <!-- Contenedor Principal de Productos -->
+<!-- ... existing code ... -->
+                <p class="text-gray-600 mb-8 leading-relaxed" id="modal-description">Descripción...</p>
+                
+                <div class="mt-auto">
+                    <p class="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Color seleccionado</p>
+                    <div class="flex gap-3 mb-6" id="modal-colors-container">
+                        <!-- Colores se inyectan por JS -->
+                    </div>
+                    
+                    <!-- NUEVO: Selector de cantidad (1 a 500) -->
+                    <p class="text-sm text-gray-500 mb-2 uppercase font-bold tracking-wider">Cantidad</p>
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <button onclick="changeModalQty(-1)" class="px-4 py-2 md:py-3 text-gray-600 hover:bg-gray-100 font-bold transition focus:outline-none">-</button>
+                            <input type="number" id="modal-qty" value="1" min="1" max="500" class="w-16 text-center font-bold focus:outline-none border-x border-gray-300 py-2 md:py-3" readonly>
+                            <button onclick="changeModalQty(1)" class="px-4 py-2 md:py-3 text-gray-600 hover:bg-gray-100 font-bold transition focus:outline-none">+</button>
+                        </div>
+                        <span class="text-xs text-gray-400">Máx: 500</span>
+                    </div>
+
+                    <button onclick="addToCart()" class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors shadow-lg focus:outline-none active:scale-[0.98]">
+                        Añadir al carrito
+                    </button>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Contraseña</label>
-                <input type="password" id="login-password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" autocomplete="current-password">
-            </div>
-            <button type="submit" id="login-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Entrar</button>
-            <div id="login-error" class="bg-red-50 border-l-4 border-red-500 p-4 mt-4 hidden">
-                <p class="text-red-700 text-sm font-semibold" id="login-error-text"></p>
-            </div>
-        </form>
+        </div>
     </div>
 
-    <!-- SECCIÓN DE ADMINISTRADOR (Oculta hasta que inicies sesión) -->
-    <div id="admin-section" class="hidden max-w-5xl mx-auto">
-        
-        <!-- Menú de navegación superior -->
-        <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <div class="flex gap-4">
-                <button onclick="switchTab('add')" id="btn-tab-add" class="font-bold text-black border-b-2 border-black pb-1 focus:outline-none">Añadir Producto</button>
-                <button onclick="switchTab('catalog')" id="btn-tab-catalog" class="font-bold text-gray-400 hover:text-black pb-1 focus:outline-none">Catálogo</button>
-            </div>
-            <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
+    <!-- PANEL DEL CARRITO LATERAL (SLIDE-OVER) -->
+    <div id="cart-panel" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+        <!-- Cabecera del carrito -->
+        <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+            <h2 class="text-xl font-bold text-gray-900">Tu Carrito</h2>
+            <button onclick="toggleCart()" class="p-2 text-gray-500 hover:text-black hover:bg-gray-200 rounded-full transition focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
 
-        <!-- Pestaña: Añadir Producto -->
-        <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
-            <div class="flex justify-between items-center mb-6 border-b pb-4">
-                <h1 class="text-2xl font-bold text-gray-900">Añadir Nuevo Producto</h1>
-                <a href="index.html" class="text-sm text-blue-600 hover:underline" target="_blank">Ver tienda</a>
+        <!-- Lista de items -->
+        <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
+            <!-- Los items se inyectan aquí -->
+        </div>
+
+        <!-- Pie del carrito (Total y Formulario) -->
+        <div class="p-6 border-t bg-gray-50 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-gray-600 font-semibold">Total:</span>
+                <span id="cart-total" class="text-2xl font-black text-gray-900">0.00 €</span>
             </div>
 
-            <form id="product-form" class="space-y-6">
-                <!-- DATOS BÁSICOS DEL PRODUCTO -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="col-span-1 md:col-span-2">
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre del producto *</label>
-                        <input type="text" id="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="Ej: Zapatillas Urban">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Precio (€) *</label>
-                        <input type="number" id="price" step="0.01" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="24.99">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
-                    <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" placeholder="Describe el producto..."></textarea>
-                </div>
-
-                <!-- VARIANTES (COLORES Y FOTOS) -->
-                <div class="border-t pt-6 mt-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-bold text-gray-900">Variantes (Colores y Fotos)</h2>
-                        <button type="button" onclick="addVariantRow()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition">
-                            + Añadir Color
-                        </button>
-                    </div>
-                    
-                    <div id="variants-container" class="space-y-4">
-                        <!-- Las filas de variantes se insertan aquí -->
-                    </div>
-                </div>
-
-                <!-- BOTÓN DE GUARDAR -->
-                <div class="border-t pt-6 mt-8">
-                    <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">
-                        Guardar Producto en Base de Datos
-                    </button>
-                    <p id="status-msg" class="text-center mt-3 text-sm font-semibold hidden"></p>
-                </div>
+            <!-- Formulario de pedido -->
+            <form id="checkout-form" class="space-y-3 mt-2 hidden">
+                <h3 class="font-bold text-gray-800 text-sm mb-2 border-b pb-1">Datos de envío</h3>
+                <input type="text" id="order-name" required placeholder="Nombre y Apellidos" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black outline-none text-sm">
+                <input type="email" id="order-email" required placeholder="Correo Electrónico" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black outline-none text-sm">
+                <input type="tel" id="order-phone" required placeholder="Número de Teléfono" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black outline-none text-sm">
+                
+                <button type="submit" id="btn-submit-order" class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition shadow-lg mt-2 focus:outline-none">
+                    Enviar orden
+                </button>
             </form>
+            
+            <button id="btn-show-checkout" onclick="showCheckout()" class="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition shadow-lg focus:outline-none hidden">
+                Tramitar Pedido
+            </button>
+            
+            <p id="checkout-msg" class="text-center font-bold mt-4 hidden"></p>
         </div>
+    </div>
+    
+    <!-- FONDO OSCURO PARA EL CARRITO -->
+    <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/40 z-[55] hidden opacity-0 transition-opacity duration-300"></div>
 
-        <!-- Pestaña: Catálogo -->
-        <div id="tab-catalog" class="hidden bg-white p-8 rounded-xl shadow-md border border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Tus Productos</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-100 text-gray-600 text-sm">
-                            <th class="p-3 border-b">ID</th>
-                            <th class="p-3 border-b">Nombre</th>
-                            <th class="p-3 border-b">Precio</th>
-                            <th class="p-3 border-b">Estado</th>
-                            <th class="p-3 border-b text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="catalog-body">
-                        <!-- Se llena con JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- Importamos el cliente de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    </div> <!-- Fin del contenedor admin-section -->
-
+    <!-- Lógica de la aplicación -->
     <script>
         // ==========================================
-        // 1. CONFIGURACIÓN (Evitando errores de redeclaración)
+        // 0. CONFIGURACIÓN DE SUPABASE
         // ==========================================
-        // Usamos 'var' en lugar de 'const' para que si el entorno recarga el código, no explote el JavaScript entero.
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
-        var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        } catch(e) {
+            console.warn("Falta configurar la URL de Supabase.");
+        }
 
-        var cloudinaryCloudName = 'dkg1ytbxb'; 
-        var cloudinaryUploadPreset = 'tienda_ropa'; 
+        // Variables globales
+        let appProducts = []; 
+        let currentModalProduct = null;
+        let currentVariantIndex = 0; 
+        
+        // Memoria del carrito (Local Storage)
+        let cart = JSON.parse(localStorage.getItem('nardo_cart')) || [];
+
+        // Función auxiliar: si un color aún no tiene foto de Cloudinary, mostramos esto
+<!-- ... existing code ... -->
+        // ==========================================
+        // 3. LÓGICA DE INTERACCIÓN
+        // ==========================================
+        function changeCardImage(productId, variantIndex, event) {
+<!-- ... existing code ... -->
+        }
+
+        function changeModalImage(variantIndex) {
+            if (!currentModalProduct) return;
+            
+            currentVariantIndex = variantIndex; // Guardamos el índice para el carrito
+            const variant = currentModalProduct.variants[variantIndex];
+            document.getElementById('modal-image-container').innerHTML = renderImage(variant);
+            
+            const buttons = document.querySelectorAll('.modal-color-btn');
+<!-- ... existing code ... -->
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+
+            document.getElementById('modal-qty').value = 1; // Reseteamos la cantidad a 1 al abrir
+            changeModalImage(0);
+        }
+
+        function closeModal() {
+<!-- ... existing code ... -->
+        document.getElementById('product-modal').addEventListener('click', function(event) {
+            if (event.target === this) closeModal();
+        });
 
         // ==========================================
-        // 2. AUTENTICACIÓN
+        // 3.5. LÓGICA DEL CARRITO Y PEDIDOS
         // ==========================================
         
-        function updateUI(session) {
-            var loginSection = document.getElementById('login-section');
-            var adminSection = document.getElementById('admin-section');
+        // Cambiar cantidad en el modal (Botones + / -)
+        function changeModalQty(change) {
+            const qtyInput = document.getElementById('modal-qty');
+            let current = parseInt(qtyInput.value);
+            let newVal = current + change;
+            if (newVal < 1) newVal = 1;
+            if (newVal > 500) newVal = 500;
+            qtyInput.value = newVal;
+        }
+
+        function addToCart() {
+            if (!currentModalProduct) return;
             
-            if (session) {
-                loginSection.classList.add('hidden');
-                adminSection.classList.remove('hidden');
-                loadCatalog();
+            const variant = currentModalProduct.variants[currentVariantIndex];
+            const qty = parseInt(document.getElementById('modal-qty').value);
+            
+            // Comprobamos si EXACTAMENTE ese producto con ESE color ya está en el carrito
+            const existingItemIndex = cart.findIndex(item => item.productId === currentModalProduct.id && item.variantIndex === currentVariantIndex);
+            
+            if (existingItemIndex > -1) {
+                // Si existe, le sumamos la cantidad (límite 500)
+                cart[existingItemIndex].quantity += qty;
+                if(cart[existingItemIndex].quantity > 500) cart[existingItemIndex].quantity = 500;
             } else {
-                loginSection.classList.remove('hidden');
-                adminSection.classList.add('hidden');
-            }
-        }
-
-        async function checkInitialSession() {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) console.error("Error comprobando sesión:", error);
-                updateUI(session);
-            } catch (err) {
-                console.error("Error crítico en checkInitialSession:", err);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            checkInitialSession();
-            addVariantRow();
-        });
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            var email = document.getElementById('login-email').value;
-            var password = document.getElementById('login-password').value;
-            var btn = document.getElementById('login-btn');
-            var errorContainer = document.getElementById('login-error');
-            var errorText = document.getElementById('login-error-text');
-            
-            btn.innerText = 'Comprobando datos...';
-            btn.disabled = true;
-            errorContainer.classList.add('hidden');
-
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({ 
-                    email: email, 
-                    password: password 
+                // Si no, lo metemos como nuevo
+                cart.push({
+                    productId: currentModalProduct.id,
+                    variantIndex: currentVariantIndex,
+                    name: currentModalProduct.name,
+                    price: currentModalProduct.price,
+                    colorName: variant.color_name,
+                    colorHex: variant.color_hex,
+                    imageUrl: variant.image_url,
+                    quantity: qty
                 });
-                
-                if (error) {
-                    console.error("Supabase Login Error:", error);
-                    let mensajeAmigable = error.message;
-                    
-                    if (error.message.includes('Invalid login credentials')) {
-                        mensajeAmigable = 'Correo o contraseña incorrectos. Revisa bien si has puesto alguna mayúscula.';
-                    } else if (error.message.includes('Email not confirmed')) {
-                        mensajeAmigable = '¡Atención! Aún no has confirmado este usuario. Ve a Supabase > Authentication > Users y marca tu usuario como confirmado.';
-                    }
-                    
-                    errorText.innerText = mensajeAmigable;
-                    errorContainer.classList.remove('hidden');
-                } else if (data.session) {
-                    console.log("¡Login exitoso!");
-                    document.getElementById('login-form').reset();
-                    updateUI(data.session);
-                }
-            } catch (err) {
-                console.error("Error crítico en login:", err);
-                errorText.innerText = "Error en la conexión. Revisa la consola.";
-                errorContainer.classList.remove('hidden');
-            } finally {
-                btn.innerText = 'Entrar';
-                btn.disabled = false;
             }
-        });
-
-        async function logout() {
-            const { error } = await supabase.auth.signOut();
-            if (error) console.error("Error al salir:", error);
-            updateUI(null);
+            
+            saveCart();
+            updateCartUI();
+            closeModal();
+            toggleCart(); // Desplegamos el carrito para que vea que se añadió
         }
 
-        // ==========================================
-        // 3. NAVEGACIÓN (PESTAÑAS)
-        // ==========================================
-        function switchTab(tab) {
-            document.getElementById('tab-add').classList.toggle('hidden', tab !== 'add');
-            document.getElementById('tab-catalog').classList.toggle('hidden', tab !== 'catalog');
-            
-            document.getElementById('btn-tab-add').className = tab === 'add' ? 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none' : 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none';
-            document.getElementById('btn-tab-catalog').className = tab === 'catalog' ? 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none' : 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none';
-            
-            if(tab === 'catalog') loadCatalog();
+        function saveCart() {
+            localStorage.setItem('nardo_cart', JSON.stringify(cart));
+            updateCartBadge();
         }
 
-        // ==========================================
-        // 4. CATÁLOGO (LEER, OCULTAR Y BORRAR)
-        // ==========================================
-        async function loadCatalog() {
-            var tbody = document.getElementById('catalog-body');
-            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center font-medium">Cargando catálogo...</td></tr>';
+        function updateCartBadge() {
+            const badge = document.getElementById('cart-badge');
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
             
-            try {
-                const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+            if (totalItems > 0) {
+                badge.innerText = totalItems > 99 ? '99+' : totalItems;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function toggleCart() {
+            const panel = document.getElementById('cart-panel');
+            const overlay = document.getElementById('cart-overlay');
+            const isClosed = panel.classList.contains('translate-x-full');
+            
+            if (isClosed) {
+                updateCartUI(); // Refrescar vista
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+                panel.classList.remove('translate-x-full');
                 
-                if (error) {
-                    console.error("Error al cargar catálogo:", error);
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos de la base de datos.</td></tr>';
-                    return;
-                }
+                // Reiniciar el checkout
+                document.getElementById('checkout-form').classList.add('hidden');
+                document.getElementById('checkout-msg').classList.add('hidden');
+            } else {
+                panel.classList.add('translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
 
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay productos subidos.</td></tr>';
-                    return;
-                }
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            saveCart();
+            updateCartUI();
+        }
 
-                tbody.innerHTML = data.map(p => `
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3 text-sm text-gray-500">#${p.id}</td>
-                        <td class="p-3 font-semibold text-gray-800">${p.name}</td>
-                        <td class="p-3 text-gray-800">${p.price} €</td>
-                        <td class="p-3">
-                            <span class="px-2 py-1 text-xs rounded-full font-medium ${p.is_visible ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}">
-                                ${p.is_visible ? 'Visible' : 'Oculto'}
-                            </span>
-                        </td>
-                        <td class="p-3 text-right space-x-3">
-                            <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-bold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} transition">
-                                ${p.is_visible ? 'Ocultar' : 'Mostrar'}
+        function updateCartUI() {
+            const container = document.getElementById('cart-items');
+            const totalEl = document.getElementById('cart-total');
+            const btnShowCheckout = document.getElementById('btn-show-checkout');
+            const formCheckout = document.getElementById('checkout-form');
+            
+            container.innerHTML = '';
+            let total = 0;
+            
+            if (cart.length === 0) {
+                container.innerHTML = '<div class="h-full flex items-center justify-center text-gray-400 font-medium">Tu carrito está vacío</div>';
+                btnShowCheckout.classList.add('hidden');
+                formCheckout.classList.add('hidden');
+            } else {
+                cart.forEach((item, index) => {
+                    total += item.price * item.quantity;
+                    
+                    const imgHtml = item.imageUrl 
+                        ? `<img src="${item.imageUrl}" class="w-16 h-16 object-cover rounded-md border border-gray-200">`
+                        : `<div class="w-16 h-16 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center"><div class="w-6 h-6 rounded-full" style="background-color: ${item.colorHex}"></div></div>`;
+
+                    container.innerHTML += `
+                        <div class="flex gap-4 items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                            ${imgHtml}
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-900 text-sm">${item.name}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div class="w-3 h-3 rounded-full border border-gray-300" style="background-color: ${item.colorHex}"></div>
+                                    <span class="text-xs text-gray-500">${item.colorName}</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-2">
+                                    <span class="font-black text-gray-900">${item.price} € x ${item.quantity}</span>
+                                </div>
+                            </div>
+                            <button onclick="removeFromCart(${index})" class="text-gray-400 hover:text-red-500 transition focus:outline-none p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
-                            <button onclick="deleteProduct(${p.id})" class="text-sm font-bold text-red-600 hover:text-red-800 transition">Borrar</button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                console.error("Error en loadCatalog:", err);
-            }
-        }
-
-        async function toggleVisibility(id, currentStatus) {
-            try {
-                const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
-                if (!error) loadCatalog();
-                else alert("Error al cambiar la visibilidad. Revisa la consola.");
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function deleteProduct(id) {
-            if (!confirm("¿Seguro que quieres borrar este producto? (La foto no se borrará de Cloudinary por seguridad)")) return;
-            try {
-                const { error } = await supabase.from('products').delete().eq('id', id);
-                if (!error) loadCatalog();
-                else {
-                    console.error("Error borrando:", error);
-                    alert("Error al borrar el producto.");
+                        </div>
+                    `;
+                });
+                
+                if(formCheckout.classList.contains('hidden')) {
+                    btnShowCheckout.classList.remove('hidden');
                 }
-            } catch (err) {
-                console.error(err);
             }
-        }
-
-        // ==========================================
-        // 5. GESTIÓN DE VARIANTES (INTERFAZ)
-        // ==========================================
-        var variantCount = 0;
-
-        function addVariantRow() {
-            variantCount++;
-            var id = variantCount;
             
-            var row = document.createElement('div');
-            row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200';
-            row.id = `variant-${id}`;
-            
-            row.innerHTML = `
-                <div class="w-full md:w-1/4">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre Color</label>
-                    <input type="text" class="variant-name w-full px-3 py-2 border rounded focus:ring-1 focus:ring-black outline-none" placeholder="Ej: Rojo" required>
-                </div>
-                <div class="w-full md:w-1/6">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Color (Hex)</label>
-                    <input type="color" class="variant-hex w-full h-10 p-1 cursor-pointer border rounded" value="#000000">
-                </div>
-                <div class="w-full md:w-2/5 flex flex-col">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Foto (Cloudinary)</label>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="openCloudinaryWidget(${id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold transition whitespace-nowrap">
-                            Subir Foto
-                        </button>
-                        <input type="text" id="image-url-${id}" class="variant-image w-full px-3 py-2 border rounded bg-gray-200 text-xs text-gray-500" placeholder="URL de la imagen..." readonly required>
-                    </div>
-                </div>
-                <div class="w-full md:w-auto">
-                    <button type="button" onclick="removeVariantRow(${id})" class="text-red-500 hover:text-red-700 font-black p-2" title="Eliminar variante">X</button>
-                </div>
-            `;
-            document.getElementById('variants-container').appendChild(row);
+            totalEl.innerText = total.toFixed(2) + ' €';
         }
 
-        function removeVariantRow(id) {
-            document.getElementById(`variant-${id}`).remove();
+        function showCheckout() {
+            document.getElementById('btn-show-checkout').classList.add('hidden');
+            document.getElementById('checkout-form').classList.remove('hidden');
         }
 
-        // ==========================================
-        // 6. INTEGRACIÓN CLOUDINARY
-        // ==========================================
-        function openCloudinaryWidget(variantId) {
-            var myWidget = cloudinary.createUploadWidget({
-                cloudName: cloudinaryCloudName, 
-                uploadPreset: cloudinaryUploadPreset,
-                sources: ['local', 'url', 'camera'],
-                multiple: false,
-                maxFiles: 1,
-                resourceType: "image"
-            }, (error, result) => { 
-                if (!error && result && result.event === "success") { 
-                    document.getElementById(`image-url-${variantId}`).value = result.info.secure_url;
-                }
-            });
-            
-            myWidget.open();
-        }
-
-        // ==========================================
-        // 7. GUARDAR EN SUPABASE
-        // ==========================================
-        document.getElementById('product-form').addEventListener('submit', async (e) => {
+        // ENVIAR EL PEDIDO A LA BASE DE DATOS
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            var btn = document.getElementById('submit-btn');
-            var msg = document.getElementById('status-msg');
+            if (cart.length === 0) return;
+
+            const btn = document.getElementById('btn-submit-order');
+            const msg = document.getElementById('checkout-msg');
             
+            const name = document.getElementById('order-name').value;
+            const email = document.getElementById('order-email').value;
+            const phone = document.getElementById('order-phone').value;
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            btn.innerText = "Procesando...";
             btn.disabled = true;
-            btn.innerText = "Guardando...";
-            msg.className = "text-center mt-3 text-sm font-semibold hidden";
+            msg.classList.add('hidden');
 
             try {
-                const name = document.getElementById('name').value;
-                const price = parseFloat(document.getElementById('price').value);
-                const description = document.getElementById('description').value;
+                // Guardamos en la nueva tabla 'orders'
+                const { error } = await supabase.from('orders').insert([{
+                    customer_name: name,
+                    customer_email: email,
+                    customer_phone: phone,
+                    items: cart, // Supabase guarda todo el carrito mágicamente aquí
+                    total_price: total,
+                    status: 'Pendiente'
+                }]);
 
-                const { data: productData, error: productError } = await supabase
-                    .from('products')
-                    .insert([{ name, price, description }])
-                    .select(); 
+                if (error) throw error;
 
-                if (productError) throw productError;
-                const productId = productData[0].id;
-
-                const variantRows = document.querySelectorAll('#variants-container > div');
-                const variantsToInsert = [];
-
-                variantRows.forEach(row => {
-                    variantsToInsert.push({
-                        product_id: productId,
-                        color_name: row.querySelector('.variant-name').value,
-                        color_hex: row.querySelector('.variant-hex').value,
-                        image_url: row.querySelector('.variant-image').value
-                    });
-                });
-
-                if (variantsToInsert.length > 0) {
-                    const { error: variantError } = await supabase
-                        .from('product_variants')
-                        .insert(variantsToInsert);
-
-                    if (variantError) throw variantError;
-                }
-
-                msg.innerText = "¡Producto guardado correctamente!";
-                msg.className = "text-center mt-3 text-sm font-semibold text-green-600 block";
-                document.getElementById('product-form').reset();
-                document.getElementById('variants-container').innerHTML = '';
-                addVariantRow(); 
+                // Éxito: vaciamos carrito
+                cart = [];
+                saveCart();
+                document.getElementById('checkout-form').reset();
+                document.getElementById('checkout-form').classList.add('hidden');
+                
+                // Mostrar pantalla de éxito
+                const container = document.getElementById('cart-items');
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center space-y-4 px-4">
+                        <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900">¡Pedido Enviado!</h3>
+                        <p class="text-gray-500 text-sm">Nos pondremos en contacto contigo pronto para gestionar el pago y envío.</p>
+                    </div>
+                `;
+                document.getElementById('cart-total').innerText = '0.00 €';
 
             } catch (error) {
-                console.error("Error al guardar:", error);
-                msg.innerText = "Error al guardar. Asegúrate de rellenar todos los campos.";
-                msg.className = "text-center mt-3 text-sm font-semibold text-red-600 block";
+                console.error("Error al enviar orden:", error);
+                msg.innerText = "Error de conexión. Inténtalo de nuevo.";
+                msg.className = "text-center font-bold mt-4 text-red-500 block";
             } finally {
+                btn.innerText = "Enviar orden";
                 btn.disabled = false;
-                btn.innerText = "Guardar Producto en Base de Datos";
             }
         });
+
+        // ==========================================
+        // 4. CONEXIÓN A SUPABASE Y DATOS
+        // ==========================================
+<!-- ... existing code ... -->
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndLoadProducts(); 
+            setupRealtime();        
+            updateCartBadge(); // Cargamos el número rojo del carrito al iniciar
+        });
+
     </script>
 </body>
 </html>
