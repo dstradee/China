@@ -30,7 +30,7 @@
     </div>
 
     <!-- SECCIÓN DE ADMINISTRADOR -->
-    <div id="admin-section" class="hidden max-w-5xl mx-auto">
+    <div id="admin-section" class="hidden max-w-6xl mx-auto">
         
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
             <div class="flex gap-4">
@@ -38,32 +38,55 @@
                 <button onclick="switchTab('catalog')" id="btn-tab-catalog" class="font-bold text-gray-400 hover:text-black pb-1 focus:outline-none">Catálogo</button>
                 <button onclick="switchTab('orders')" id="btn-tab-orders" class="font-bold text-gray-400 hover:text-black pb-1 focus:outline-none">Pedidos</button>
             </div>
-            <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
+            <div class="flex items-center gap-4">
+                <span id="realtime-status" class="flex items-center gap-2 text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> En línea
+                </span>
+                <button onclick="logout()" class="text-sm text-red-600 hover:underline font-semibold focus:outline-none">Cerrar Sesión</button>
+            </div>
         </div>
 
         <!-- PESTAÑA: AÑADIR / EDITAR PRODUCTO -->
         <div id="tab-add" class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
             <h1 class="text-2xl font-bold text-gray-900 mb-6" id="form-title">Añadir Nuevo Producto</h1>
             <form id="product-form" class="space-y-6">
-                <!-- Campo oculto para saber si estamos editando o creando -->
                 <input type="hidden" id="product-id">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Info Principal -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-lg border">
                     <div class="col-span-1 md:col-span-2">
+                        <h3 class="font-bold text-lg mb-4">Información Principal</h3>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre del producto *</label>
-                        <input type="text" id="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none">
+                        <input type="text" id="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none mb-4">
+                        
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Precio Base (€) *</label>
+                        <input type="number" id="price" step="0.01" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none mb-4">
+                        
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
+                        <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Precio (€) *</label>
-                        <input type="number" id="price" step="0.01" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none">
+
+                    <!-- Foto Principal del Producto -->
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Imagen Principal del Producto</label>
+                        <input type="hidden" id="main-image-url">
+                        <button type="button" onclick="openCloudinaryWidget('main-image-url', false)" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-semibold hover:bg-blue-200 transition text-sm">Subir Foto Principal</button>
+                        <div id="preview-main-image-url" class="mt-3 flex gap-2 flex-wrap"></div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
-                    <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none"></textarea>
+
+                <!-- Variantes / Colores -->
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg">Colores y Variantes</h3>
+                        <button type="button" onclick="addVariantRow()" class="bg-black text-white px-4 py-2 rounded text-sm font-bold hover:bg-gray-800 transition">+ Añadir Color/Variante</button>
+                    </div>
+                    <div id="variants-container" class="space-y-4">
+                        <!-- Las variantes se inyectarán aquí -->
+                    </div>
                 </div>
-                <div id="variants-container" class="space-y-4"></div>
-                <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Guardar Producto</button>
+
+                <button type="submit" id="submit-btn" class="w-full bg-black text-white font-bold py-4 rounded-xl text-lg hover:bg-gray-800 transition shadow-lg">Guardar Producto Completo</button>
             </form>
         </div>
 
@@ -82,281 +105,395 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE
+        // --- CONFIGURACIÓN SUPABASE ---
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
         var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        // LÓGICA DE LOGIN
+        // --- CONFIGURACIÓN CLOUDINARY ---
+        const CLOUDINARY_CLOUD_NAME = 'dkg1ytbxb'; 
+        const CLOUDINARY_UPLOAD_PRESET = 'tienda_ropa';  
+
+        let deletedVariants = []; 
+
+        // LOGIN Y SESIÓN
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const btn = document.getElementById('login-btn');
-            const errorText = document.getElementById('login-error-text');
             
             btn.innerText = 'Entrando...';
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             
             if (error) {
-                errorText.innerText = "Error: " + error.message;
+                document.getElementById('login-error-text').innerText = "Error: " + error.message;
                 document.getElementById('login-error').classList.remove('hidden');
                 btn.innerText = 'Entrar';
-                btn.disabled = false;
             } else {
                 location.reload(); 
             }
         });
 
-        // LÓGICA DE CERRAR SESIÓN
-        async function logout() { 
-            await supabase.auth.signOut(); 
-            location.reload(); 
-        }
+        async function logout() { await supabase.auth.signOut(); location.reload(); }
 
-        // CARGAR SESIÓN INICIAL
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-section').classList.remove('hidden');
+                loadCatalog(); 
+                setupRealtime(); // Iniciar la conexión en tiempo real
             }
         });
 
-        // --- LÓGICA DE PESTAÑAS (TABS) ---
+        // --- SISTEMA REALTIME ---
+        function setupRealtime() {
+            supabase
+                .channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+                    // Si cambian los pedidos y estamos en su pestaña, recargamos
+                    if (!document.getElementById('tab-orders').classList.contains('hidden')) loadOrders();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
+                    // Si cambia un producto y estamos en el catálogo, recargamos
+                    if (!document.getElementById('tab-catalog').classList.contains('hidden')) loadCatalog();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'variants' }, payload => {
+                    // Si cambia una variante y estamos en el catálogo, recargamos
+                    if (!document.getElementById('tab-catalog').classList.contains('hidden')) loadCatalog();
+                })
+                .subscribe((status) => {
+                    const statusIndicator = document.getElementById('realtime-status');
+                    if (status === 'SUBSCRIBED') {
+                        statusIndicator.innerHTML = `<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> En línea`;
+                        statusIndicator.className = 'flex items-center gap-2 text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full';
+                    } else {
+                        statusIndicator.innerHTML = `<span class="w-2 h-2 bg-red-500 rounded-full"></span> Desconectado`;
+                        statusIndicator.className = 'flex items-center gap-2 text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full';
+                    }
+                });
+        }
+
+        // --- PESTAÑAS ---
         function switchTab(tabId) {
             document.getElementById('tab-add').classList.add('hidden');
             document.getElementById('tab-catalog').classList.add('hidden');
             document.getElementById('tab-orders').classList.add('hidden');
 
-            const btnAdd = document.getElementById('btn-tab-add');
-            const btnCatalog = document.getElementById('btn-tab-catalog');
-            const btnOrders = document.getElementById('btn-tab-orders');
-
-            [btnAdd, btnCatalog, btnOrders].forEach(btn => {
-                btn.className = 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none'; 
+            ['add', 'catalog', 'orders'].forEach(id => {
+                document.getElementById(`btn-tab-${id}`).className = 'font-bold text-gray-400 hover:text-black pb-1 focus:outline-none'; 
             });
 
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
             document.getElementById(`btn-tab-${tabId}`).className = 'font-bold text-black border-b-2 border-black pb-1 focus:outline-none'; 
 
-            // Si cambiamos a 'add' manualmente, limpiamos el formulario por si acaso estaba en modo "Editar"
-            if (tabId === 'add') {
-                if(!document.getElementById('product-id').value) resetProductForm();
-            } else if (tabId === 'catalog') {
-                loadCatalog();
-            } else if (tabId === 'orders') {
-                loadOrders();
-            }
+            if (tabId === 'add' && !document.getElementById('product-id').value) resetProductForm();
+            if (tabId === 'catalog') loadCatalog();
+            if (tabId === 'orders') loadOrders();
         }
 
-        // --- GESTIÓN DE PRODUCTOS (GUARDAR / EDITAR / ELIMINAR) ---
-        
-        // Limpiar el formulario
+        // --- FUNCIONES DE IMÁGENES (CLOUDINARY) ---
+        function openCloudinaryWidget(targetInputId, isMultiple = false) {
+            cloudinary.openUploadWidget({
+                cloudName: CLOUDINARY_CLOUD_NAME,
+                uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+                multiple: isMultiple
+            }, (error, result) => {
+                if (!error && result && result.event === "success") {
+                    const input = document.getElementById(targetInputId);
+                    if (isMultiple) {
+                        let currentUrls = input.value ? input.value.split(',') : [];
+                        currentUrls.push(result.info.secure_url);
+                        input.value = currentUrls.join(',');
+                    } else {
+                        input.value = result.info.secure_url;
+                    }
+                    renderImagePreviews(targetInputId);
+                }
+            });
+        }
+
+        function renderImagePreviews(inputId) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(`preview-${inputId}`);
+            container.innerHTML = '';
+            
+            if (!input.value) return;
+            
+            const urls = input.value.split(',');
+            urls.forEach((url, index) => {
+                if(url.trim() === '') return;
+                const imgWrap = document.createElement('div');
+                imgWrap.className = "relative inline-block border rounded p-1 bg-white shadow-sm";
+                imgWrap.innerHTML = `
+                    <img src="${url}" class="h-20 w-20 object-cover rounded">
+                    <button type="button" onclick="removeImage('${inputId}', ${index})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-red-700 shadow">&times;</button>
+                `;
+                container.appendChild(imgWrap);
+            });
+        }
+
+        window.removeImage = function(inputId, indexToRemove) {
+            const input = document.getElementById(inputId);
+            let urls = input.value.split(',');
+            urls.splice(indexToRemove, 1);
+            input.value = urls.join(',');
+            renderImagePreviews(inputId);
+        };
+
+        // --- GESTIÓN DE VARIANTES ---
+        function addVariantRow(variant = null) {
+            const container = document.getElementById('variants-container');
+            const uniqueId = 'var-' + Date.now() + Math.floor(Math.random() * 1000);
+            
+            const div = document.createElement('div');
+            div.className = 'variant-row bg-gray-50 p-4 border rounded-lg relative';
+            
+            const isHiddenChecked = variant && variant.is_hidden ? 'checked' : '';
+            const varId = variant ? variant.id : '';
+            const varName = variant ? variant.name : '';
+            const varPriceMod = variant ? variant.price_modifier : '0';
+            const varImages = variant && variant.image_urls ? variant.image_urls : '';
+
+            div.innerHTML = `
+                <input type="hidden" class="var-id" value="${varId}">
+                <button type="button" onclick="removeVariantRow(this, '${varId}')" class="absolute top-4 right-4 text-red-500 hover:underline text-sm font-bold">Eliminar Color</button>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pr-20">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Nombre Variante/Color</label>
+                        <input type="text" class="var-name w-full px-3 py-2 border rounded focus:ring-black outline-none" placeholder="Ej: Color Azul / Talla M" value="${varName}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Modificador de Precio (€)</label>
+                        <input type="number" step="0.01" class="var-price w-full px-3 py-2 border rounded focus:ring-black outline-none" placeholder="Ej: 5 (Suma 5€ al total)" value="${varPriceMod}">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold mb-1">Fotos de este Color</label>
+                    <input type="hidden" id="input-${uniqueId}" class="var-images" value="${varImages}">
+                    <button type="button" onclick="openCloudinaryWidget('input-${uniqueId}', true)" class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-300 transition">Subir Fotos del Color</button>
+                    <div id="preview-input-${uniqueId}" class="mt-2 flex gap-2 flex-wrap"></div>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer mt-2 w-max">
+                    <input type="checkbox" class="var-hidden w-4 h-4" ${isHiddenChecked}>
+                    <span class="text-sm font-semibold text-gray-700">Ocultar este color en la tienda</span>
+                </label>
+            `;
+            container.appendChild(div);
+            
+            if(varImages) renderImagePreviews(`input-${uniqueId}`);
+        }
+
+        window.removeVariantRow = function(btn, variantId) {
+            if(variantId) deletedVariants.push(variantId);
+            btn.closest('.variant-row').remove();
+        }
+
         function resetProductForm() {
             document.getElementById('product-form').reset();
             document.getElementById('product-id').value = '';
             document.getElementById('form-title').innerText = 'Añadir Nuevo Producto';
+            document.getElementById('main-image-url').value = '';
+            document.getElementById('preview-main-image-url').innerHTML = '';
+            document.getElementById('variants-container').innerHTML = '';
+            deletedVariants = [];
         }
 
-        // Guardar o Actualizar Producto
+        // --- GUARDAR PRODUCTO Y VARIANTES ---
         document.getElementById('product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const id = document.getElementById('product-id').value;
-            const name = document.getElementById('name').value;
-            const price = parseFloat(document.getElementById('price').value);
-            const description = document.getElementById('description').value;
             const btn = document.getElementById('submit-btn');
-            
             btn.innerText = 'Guardando...';
             btn.disabled = true;
 
-            // Preparamos los datos para la BD (Asegúrate de que los nombres coincidan con tus columnas)
-            const productData = { 
-                name: name, 
-                price: price, 
-                description: description 
-            };
+            try {
+                const id = document.getElementById('product-id').value;
+                const name = document.getElementById('name').value;
+                const price = parseFloat(document.getElementById('price').value);
+                const description = document.getElementById('description').value;
+                const imageUrl = document.getElementById('main-image-url').value;
 
-            let errorResult;
+                const productData = { name, price, description, image_url: imageUrl };
+                let productId = id;
 
-            if (id) {
-                // Si hay ID, estamos actualizando
-                const { error } = await supabase.from('products').update(productData).eq('id', id);
-                errorResult = error;
-            } else {
-                // Si no hay ID, creamos uno nuevo
-                const { error } = await supabase.from('products').insert([productData]);
-                errorResult = error;
-            }
+                // 1. Guardar/Actualizar Producto
+                if (id) {
+                    const { error } = await supabase.from('products').update(productData).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    const { data, error } = await supabase.from('products').insert([productData]).select().single();
+                    if (error) throw error;
+                    productId = data.id;
+                }
 
-            if (errorResult) {
-                alert('Error al guardar: ' + errorResult.message);
-            } else {
-                alert(id ? 'Producto actualizado correctamente' : 'Producto añadido correctamente');
+                // 2. Gestionar Variantes
+                const rows = document.querySelectorAll('.variant-row');
+                for (let row of rows) {
+                    const vId = row.querySelector('.var-id').value;
+                    const vName = row.querySelector('.var-name').value;
+                    const vPrice = parseFloat(row.querySelector('.var-price').value || 0);
+                    const vImages = row.querySelector('.var-images').value;
+                    const vHidden = row.querySelector('.var-hidden').checked;
+
+                    const vData = {
+                        product_id: productId,
+                        name: vName,
+                        price_modifier: vPrice,
+                        image_urls: vImages,
+                        is_hidden: vHidden
+                    };
+
+                    if (vId) {
+                        await supabase.from('variants').update(vData).eq('id', vId);
+                    } else {
+                        await supabase.from('variants').insert([vData]);
+                    }
+                }
+
+                // 3. Eliminar variantes borradas en el UI
+                if (deletedVariants.length > 0) {
+                    await supabase.from('variants').delete().in('id', deletedVariants);
+                }
+
+                alert('Producto guardado correctamente');
                 resetProductForm();
-                switchTab('catalog'); // Te lleva al catálogo para que veas los cambios
-            }
+                switchTab('catalog');
 
-            btn.innerText = 'Guardar Producto';
-            btn.disabled = false;
+            } catch (err) {
+                alert('Error al guardar: ' + err.message);
+            } finally {
+                btn.innerText = 'Guardar Producto Completo';
+                btn.disabled = false;
+            }
         });
 
-        // Cargar datos en el formulario para editar
-        async function editProduct(id) {
-            const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
-            if (error) {
-                alert("Error al cargar producto: " + error.message);
-                return;
+        // --- EDITAR PRODUCTO ---
+        window.editProduct = async function(id) {
+            const { data: prod, error: errProd } = await supabase.from('products').select('*').eq('id', id).single();
+            if (errProd) return alert("Error al cargar producto");
+
+            document.getElementById('product-id').value = prod.id;
+            document.getElementById('name').value = prod.name;
+            document.getElementById('price').value = prod.price;
+            document.getElementById('description').value = prod.description || '';
+            
+            document.getElementById('main-image-url').value = prod.image_url || '';
+            renderImagePreviews('main-image-url');
+
+            document.getElementById('variants-container').innerHTML = '';
+            deletedVariants = [];
+            const { data: variants, error: errVar } = await supabase.from('variants').select('*').eq('product_id', id);
+            
+            if (!errVar && variants) {
+                variants.forEach(v => addVariantRow(v));
             }
-            
-            // Rellenar formulario
-            document.getElementById('product-id').value = data.id;
-            document.getElementById('name').value = data.name || data.nombre || '';
-            document.getElementById('price').value = data.price || data.precio || '';
-            document.getElementById('description').value = data.description || data.descripcion || '';
-            
-            // Cambiar título y de pestaña
+
             document.getElementById('form-title').innerText = 'Editar Producto';
             switchTab('add');
-        }
+        };
 
-        // Eliminar producto
-        async function deleteProduct(id) {
-            if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+        // --- ELIMINAR PRODUCTO ---
+        window.deleteProduct = async function(id) {
+            if (confirm('¿Eliminar producto de forma permanente?')) {
                 const { error } = await supabase.from('products').delete().eq('id', id);
-                if (error) {
-                    alert('Error al eliminar: ' + error.message);
-                } else {
-                    loadCatalog(); // Recargar la tabla
-                }
+                if (error) alert('Error: ' + error.message);
             }
-        }
-
+        };
 
         // --- CARGAR CATÁLOGO ---
         async function loadCatalog() {
             const tbody = document.getElementById('catalog-body');
-            tbody.innerHTML = '<tr><td class="p-4 text-gray-500">Cargando productos...</td></tr>';
+            tbody.innerHTML = '<tr><td class="p-4">Cargando...</td></tr>';
+            const { data, error } = await supabase.from('products').select('*, variants(id)').order('created_at', { ascending: false });
 
-            const { data, error } = await supabase.from('products').select('*');
+            if (error || !data) return tbody.innerHTML = '<tr><td class="p-4 text-red-500">Error al cargar el catálogo</td></tr>';
 
-            if (error) {
-                tbody.innerHTML = `<tr><td class="p-4 text-red-500">Error al cargar: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-4 text-gray-500">No hay productos en el catálogo.</td></tr>';
-                return;
-            }
-
-            let html = `
-                <tr class="bg-gray-50 border-b">
-                    <th class="p-4 font-semibold text-gray-700">Nombre</th>
-                    <th class="p-4 font-semibold text-gray-700">Precio</th>
-                    <th class="p-4 font-semibold text-gray-700">Acciones</th>
-                </tr>
-            `;
-
-            data.forEach(product => {
+            let html = `<tr class="bg-gray-50 border-b"><th class="p-4">Img</th><th class="p-4">Producto</th><th class="p-4">Precio Base</th><th class="p-4">Variantes</th><th class="p-4">Acciones</th></tr>`;
+            data.forEach(p => {
+                const img = p.image_url ? `<img src="${p.image_url}" class="w-12 h-12 object-cover rounded border">` : '<div class="w-12 h-12 bg-gray-200 rounded"></div>';
+                const varCount = p.variants ? p.variants.length : 0;
+                
                 html += `
                     <tr class="border-b hover:bg-gray-50 transition">
-                        <td class="p-4">${product.name || product.nombre || 'Sin nombre'}</td>
-                        <td class="p-4 font-medium">${product.price || product.precio || '0.00'} €</td>
+                        <td class="p-4">${img}</td>
+                        <td class="p-4 font-bold">${p.name}</td>
+                        <td class="p-4">${p.price} €</td>
+                        <td class="p-4 text-sm text-gray-500">${varCount} colores/tallas</td>
                         <td class="p-4">
-                            <button onclick="editProduct('${product.id}')" class="text-blue-600 hover:underline mr-4 font-semibold">Editar</button>
-                            <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:underline font-semibold">Eliminar</button>
+                            <button onclick="editProduct('${p.id}')" class="text-blue-600 font-bold mr-3 hover:underline">Editar</button>
+                            <button onclick="deleteProduct('${p.id}')" class="text-red-600 font-bold hover:underline">Eliminar</button>
                         </td>
                     </tr>
                 `;
             });
-
             tbody.innerHTML = html;
         }
 
         // --- CARGAR PEDIDOS ---
         async function loadOrders() {
             const container = document.getElementById('orders-container');
-            container.innerHTML = '<p class="text-gray-500">Cargando pedidos...</p>';
+            container.innerHTML = '<p>Cargando pedidos...</p>';
 
-            const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+            const { data, error } = await supabase
+                .from('orders')
+                .select(`
+                    *,
+                    order_items (
+                        quantity,
+                        price_at_purchase,
+                        products ( name )
+                    )
+                `)
+                .order('created_at', { ascending: false });
 
-            if (error) {
-                container.innerHTML = `<p class="text-red-500">Error al cargar: ${error.message}</p>`;
-                return;
-            }
+            if (error || !data) return container.innerHTML = '<p class="text-red-500">Error al cargar pedidos.</p>';
 
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">Aún no hay pedidos registrados.</p>';
-                return;
-            }
-
-            let html = `
-                <table class="w-full text-left border-collapse mt-4">
-                    <thead>
-                        <tr class="bg-gray-50 border-b">
-                            <th class="p-4 font-semibold text-gray-700">ID / Fecha</th>
-                            <th class="p-4 font-semibold text-gray-700">Info Cliente</th>
-                            <th class="p-4 font-semibold text-gray-700">Total</th>
-                            <th class="p-4 font-semibold text-gray-700">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+            let html = `<table class="w-full text-left border-collapse mt-4">
+                <thead><tr class="bg-gray-50 border-b">
+                    <th class="p-4">Pedido / Fecha</th><th class="p-4">Cliente</th><th class="p-4">Artículos</th><th class="p-4">Total</th><th class="p-4">Estado</th>
+                </tr></thead><tbody>`;
 
             data.forEach(order => {
-                const date = new Date(order.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const statusStr = order.status || order.estado || '';
+                const date = new Date(order.created_at).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                const isCompleted = (order.status || '').toLowerCase() === 'completado';
                 
-                // Generar el badge y botón de estado
-                let statusHtml = '';
-                if (statusStr.toLowerCase() === 'completado') {
-                    statusHtml = `<span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">Completado</span>`;
-                } else {
-                    statusHtml = `
-                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block">Pendiente</span>
-                        <button onclick="markOrderCompleted('${order.id}')" class="block text-xs bg-black text-white px-3 py-1.5 rounded hover:bg-gray-800 transition shadow-sm font-semibold">Marcar Completado</button>
-                    `;
+                const statusHtml = isCompleted 
+                    ? `<span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-200 shadow-sm">Completado</span>`
+                    : `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block border border-yellow-200">Pendiente</span>
+                       <button onclick="markOrderCompleted('${order.id}')" class="block text-xs bg-black text-white px-2 py-1.5 rounded font-bold shadow hover:bg-gray-800">Marcar Completado</button>`;
+
+                let itemsList = '';
+                if(order.order_items && order.order_items.length > 0) {
+                    itemsList = '<ul class="text-sm text-gray-700 list-disc list-inside mt-1 font-medium">';
+                    order.order_items.forEach(item => {
+                        const pName = item.products ? item.products.name : 'Producto Eliminado';
+                        itemsList += `<li>${item.quantity}x ${pName} (${item.price_at_purchase}€)</li>`;
+                    });
+                    itemsList += '</ul>';
                 }
 
                 html += `
-                    <tr class="border-b hover:bg-gray-50 transition">
-                        <td class="p-4">
-                            <span class="text-sm font-bold block">#${order.id}</span>
-                            <span class="text-xs text-gray-500 block mt-1">${date}</span>
-                        </td>
-                        <td class="p-4">
-                            <div class="font-bold text-gray-900">${order.customer_name || order.cliente || 'Desconocido'}</div>
-                            <div class="text-sm text-gray-600 mt-1">📧 ${order.email || order.correo || 'Sin correo'}</div>
-                            <div class="text-sm text-gray-600 mt-0.5">📞 ${order.phone || order.telefono || 'Sin teléfono'}</div>
-                        </td>
-                        <td class="p-4 font-bold text-lg">${order.total_price || order.total || order.precio_total || '0.00'} €</td>
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4 text-sm"><span class="font-bold">#${order.id.slice(0,6)}...</span><br><span class="text-xs text-gray-500">${date}</span></td>
+                        <td class="p-4 text-sm"><b>${order.customer_name}</b><br>📧 ${order.customer_email}</td>
+                        <td class="p-4">${itemsList || '<span class="text-gray-400 text-sm">Sin detalles</span>'}</td>
+                        <td class="p-4 font-bold text-lg">${order.total_amount} €</td>
                         <td class="p-4">${statusHtml}</td>
-                    </tr>
-                `;
+                    </tr>`;
             });
-
             html += `</tbody></table>`;
             container.innerHTML = html;
         }
 
-        // Marcar un pedido como completado en la BD
-        async function markOrderCompleted(id) {
-            if (confirm('¿Marcar este pedido como Completado?')) {
-                // He puesto 'status' ya que la tabla se llama orders, si la columna se llama 'estado' cambialo aquí.
-                const { error } = await supabase.from('orders').update({ status: 'Completado' }).eq('id', id);
-                if (error) {
-                    alert('Error al actualizar el pedido: ' + error.message);
-                } else {
-                    loadOrders(); // Recarga la vista de pedidos para ver el botón verde
-                }
+        window.markOrderCompleted = async function(id) {
+            if (confirm('¿Completar pedido?')) {
+                await supabase.from('orders').update({ status: 'Completado' }).eq('id', id);
+                // No hace falta llamar a loadOrders() aquí porque el sistema Realtime ya lo va a recargar automáticamente al notar el cambio.
             }
-        }
-
-        // --- FUNCIONES MANTENIDAS (Para que el resto no de fallos al integrarlo a futuro) ---
-        function addVariantRow() { console.log('Añadir variante'); }
-        function openCloudinaryWidget(id) { console.log('Abrir Cloudinary', id); }
+        };
 
     </script>
 </body>
