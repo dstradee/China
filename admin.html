@@ -16,14 +16,16 @@
         <form id="login-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-semibold mb-1">Email</label>
-                <input type="email" id="login-email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none">
+                <input type="email" id="login-email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" autocomplete="username">
             </div>
             <div>
                 <label class="block text-sm font-semibold mb-1">Contraseña</label>
-                <input type="password" id="login-password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none">
+                <input type="password" id="login-password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none" autocomplete="current-password">
             </div>
             <button type="submit" id="login-btn" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Entrar</button>
-            <p id="login-error" class="text-red-500 text-sm text-center hidden"></p>
+            <div id="login-error" class="bg-red-50 border-l-4 border-red-500 p-4 mt-4 hidden">
+                <p class="text-red-700 text-sm font-semibold" id="login-error-text"></p>
+            </div>
         </form>
     </div>
 
@@ -124,63 +126,90 @@
         const cloudinaryUploadPreset = 'tienda_ropa'; 
 
         // ==========================================
-        // 2. AUTENTICACIÓN MEJORADA
+        // 2. AUTENTICACIÓN A PRUEBA DE BOMBAS
         // ==========================================
         
-        // Función para actualizar la interfaz según si hay sesión o no
         function updateUI(session) {
+            const loginSection = document.getElementById('login-section');
+            const adminSection = document.getElementById('admin-section');
+            
             if (session) {
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('admin-section').classList.remove('hidden');
-                loadCatalog(); // Carga la lista de ropa al entrar
+                loginSection.classList.add('hidden');
+                adminSection.classList.remove('hidden');
+                loadCatalog(); // Cargamos el catálogo en cuanto sabemos que está dentro
             } else {
-                document.getElementById('login-section').classList.remove('hidden');
-                document.getElementById('admin-section').classList.add('hidden');
+                loginSection.classList.remove('hidden');
+                adminSection.classList.add('hidden');
             }
         }
 
-        // Comprobación inicial forzada nada más cargar la página
+        // Comprobación inicial
         async function checkInitialSession() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) console.error("Error comprobando sesión:", error);
             updateUI(session);
         }
 
-        // Listener para cambios de estado (cuando te logueas o deslogueas)
-        supabase.auth.onAuthStateChange((_event, session) => {
-            updateUI(session);
-        });
-
-        // Ejecutar comprobación al cargar
         document.addEventListener('DOMContentLoaded', () => {
             checkInitialSession();
-            addVariantRow(); // Añadir la primera fila de variantes por defecto
+            addVariantRow(); // Preparamos el formulario
         });
 
-        // Login form
+        // El formulario de Login
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const btn = document.getElementById('login-btn');
-            const errorMsg = document.getElementById('login-error');
+            const errorContainer = document.getElementById('login-error');
+            const errorText = document.getElementById('login-error-text');
             
-            btn.innerText = 'Comprobando...';
+            // Estado de carga
+            btn.innerText = 'Comprobando datos...';
             btn.disabled = true;
-            errorMsg.classList.add('hidden');
+            errorContainer.classList.add('hidden');
 
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            
-            if (error) {
-                errorMsg.innerText = 'Correo o contraseña incorrectos.';
-                errorMsg.classList.remove('hidden');
+            try {
+                // Hacemos la llamada directa
+                const { data, error } = await supabase.auth.signInWithPassword({ 
+                    email: email, 
+                    password: password 
+                });
+                
+                if (error) {
+                    console.error("Supabase Error Completo:", error);
+                    // Aquí cazamos el error real y te lo decimos claro
+                    let mensajeAmigable = error.message;
+                    
+                    if (error.message.includes('Invalid login credentials')) {
+                        mensajeAmigable = 'Correo o contraseña incorrectos. Revisa bien si has puesto alguna mayúscula.';
+                    } else if (error.message.includes('Email not confirmed')) {
+                        mensajeAmigable = '¡Atención! Aún no has confirmado este usuario. Ve a Supabase > Authentication > Users y marca tu usuario como confirmado.';
+                    }
+                    
+                    errorText.innerText = mensajeAmigable;
+                    errorContainer.classList.remove('hidden');
+                } else if (data.session) {
+                    // Si todo va bien, entramos directamente a lo bruto
+                    console.log("¡Login exitoso!");
+                    document.getElementById('login-form').reset();
+                    updateUI(data.session);
+                }
+            } catch (err) {
+                console.error("Error crítico de JS:", err);
+                errorText.innerText = "Error en el navegador. Abre la consola (F12) para ver más detalles.";
+                errorContainer.classList.remove('hidden');
+            } finally {
+                // Restauramos el botón
+                btn.innerText = 'Entrar';
+                btn.disabled = false;
             }
-            
-            btn.innerText = 'Entrar';
-            btn.disabled = false;
         });
 
         async function logout() {
-            await supabase.auth.signOut();
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error("Error al salir:", error);
+            updateUI(null);
         }
 
         // ==========================================
@@ -206,8 +235,8 @@
             const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
             
             if (error) {
-                console.error(error);
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos.</td></tr>';
+                console.error("Error al cargar catálogo:", error);
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos de la base de datos.</td></tr>';
                 return;
             }
 
@@ -239,7 +268,7 @@
         async function toggleVisibility(id, currentStatus) {
             const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
             if (!error) loadCatalog();
-            else alert("Error al cambiar visibilidad");
+            else alert("Error al cambiar la visibilidad. Revisa la consola.");
         }
 
         async function deleteProduct(id) {
@@ -247,8 +276,8 @@
             const { error } = await supabase.from('products').delete().eq('id', id);
             if (!error) loadCatalog();
             else {
-                console.error(error);
-                alert("Error al borrar el producto");
+                console.error("Error borrando:", error);
+                alert("Error al borrar el producto.");
             }
         }
 
