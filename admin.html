@@ -63,23 +63,20 @@
                         <input type="number" id="price" step="0.01" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none mb-4">
                         
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
-                        <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none"></textarea>
-                    </div>
+                        <textarea id="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black outline-none mb-4"></textarea>
 
-                    <!-- Foto Principal del Producto -->
-                    <div class="col-span-1 md:col-span-2">
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Imagen Principal del Producto</label>
-                        <input type="hidden" id="main-image-url">
-                        <button type="button" onclick="openCloudinaryWidget('main-image-url', false)" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-semibold hover:bg-blue-200 transition text-sm">Subir Foto Principal</button>
-                        <div id="preview-main-image-url" class="mt-3 flex gap-2 flex-wrap"></div>
+                        <label class="flex items-center gap-2 cursor-pointer mt-2 w-max">
+                            <input type="checkbox" id="is-visible" class="w-4 h-4" checked>
+                            <span class="text-sm font-semibold text-gray-700">Producto Visible en la tienda</span>
+                        </label>
                     </div>
                 </div>
 
                 <!-- Variantes / Colores -->
                 <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-lg">Colores y Variantes</h3>
-                        <button type="button" onclick="addVariantRow()" class="bg-black text-white px-4 py-2 rounded text-sm font-bold hover:bg-gray-800 transition">+ Añadir Color/Variante</button>
+                        <h3 class="font-bold text-lg">Colores y Fotos</h3>
+                        <button type="button" onclick="addVariantRow()" class="bg-black text-white px-4 py-2 rounded text-sm font-bold hover:bg-gray-800 transition">+ Añadir Color</button>
                     </div>
                     <div id="variants-container" class="space-y-4">
                         <!-- Las variantes se inyectarán aquí -->
@@ -142,7 +139,7 @@
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-section').classList.remove('hidden');
                 loadCatalog(); 
-                setupRealtime(); // Iniciar la conexión en tiempo real
+                setupRealtime();
             }
         });
 
@@ -151,15 +148,12 @@
             supabase
                 .channel('schema-db-changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
-                    // Si cambian los pedidos y estamos en su pestaña, recargamos
                     if (!document.getElementById('tab-orders').classList.contains('hidden')) loadOrders();
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
-                    // Si cambia un producto y estamos en el catálogo, recargamos
                     if (!document.getElementById('tab-catalog').classList.contains('hidden')) loadCatalog();
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'variants' }, payload => {
-                    // Si cambia una variante y estamos en el catálogo, recargamos
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, payload => {
                     if (!document.getElementById('tab-catalog').classList.contains('hidden')) loadCatalog();
                 })
                 .subscribe((status) => {
@@ -193,7 +187,7 @@
         }
 
         // --- FUNCIONES DE IMÁGENES (CLOUDINARY) ---
-        function openCloudinaryWidget(targetInputId, isMultiple = false) {
+        function openCloudinaryWidget(targetInputId, isMultiple = true) {
             cloudinary.openUploadWidget({
                 cloudName: CLOUDINARY_CLOUD_NAME,
                 uploadPreset: CLOUDINARY_UPLOAD_PRESET,
@@ -246,15 +240,14 @@
             const container = document.getElementById('variants-container');
             const uniqueId = 'var-' + Date.now() + Math.floor(Math.random() * 1000);
             
+            const isSoldOutChecked = variant && variant.is_sold_out ? 'checked' : '';
+            const varId = variant ? variant.id : '';
+            const varName = variant ? variant.color_name : '';
+            const varHex = variant && variant.color_hex ? variant.color_hex : '#000000';
+            const varImages = variant && variant.image_url ? variant.image_url : '';
+
             const div = document.createElement('div');
             div.className = 'variant-row bg-gray-50 p-4 border rounded-lg relative';
-            
-            const isHiddenChecked = variant && variant.is_hidden ? 'checked' : '';
-            const varId = variant ? variant.id : '';
-            const varName = variant ? variant.name : '';
-            const varPriceMod = variant ? variant.price_modifier : '0';
-            const varImages = variant && variant.image_urls ? variant.image_urls : '';
-
             div.innerHTML = `
                 <input type="hidden" class="var-id" value="${varId}">
                 <button type="button" onclick="removeVariantRow(this, '${varId}')" class="absolute top-4 right-4 text-red-500 hover:underline text-sm font-bold">Eliminar Color</button>
@@ -262,24 +255,24 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pr-20">
                     <div>
                         <label class="block text-xs font-semibold mb-1">Nombre Variante/Color</label>
-                        <input type="text" class="var-name w-full px-3 py-2 border rounded focus:ring-black outline-none" placeholder="Ej: Color Azul / Talla M" value="${varName}">
+                        <input type="text" class="var-name w-full px-3 py-2 border rounded focus:ring-black outline-none" placeholder="Ej: Azul Marino" value="${varName}">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1">Modificador de Precio (€)</label>
-                        <input type="number" step="0.01" class="var-price w-full px-3 py-2 border rounded focus:ring-black outline-none" placeholder="Ej: 5 (Suma 5€ al total)" value="${varPriceMod}">
+                        <label class="block text-xs font-semibold mb-1">Código de Color</label>
+                        <input type="color" class="var-hex h-10 w-full rounded cursor-pointer" value="${varHex}">
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <label class="block text-xs font-semibold mb-1">Fotos de este Color</label>
+                    <label class="block text-xs font-semibold mb-1">Fotos de este Color (La 1ª será la principal)</label>
                     <input type="hidden" id="input-${uniqueId}" class="var-images" value="${varImages}">
                     <button type="button" onclick="openCloudinaryWidget('input-${uniqueId}', true)" class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-300 transition">Subir Fotos del Color</button>
                     <div id="preview-input-${uniqueId}" class="mt-2 flex gap-2 flex-wrap"></div>
                 </div>
 
                 <label class="flex items-center gap-2 cursor-pointer mt-2 w-max">
-                    <input type="checkbox" class="var-hidden w-4 h-4" ${isHiddenChecked}>
-                    <span class="text-sm font-semibold text-gray-700">Ocultar este color en la tienda</span>
+                    <input type="checkbox" class="var-sold-out w-4 h-4" ${isSoldOutChecked}>
+                    <span class="text-sm font-semibold text-gray-700">Agotado / Ocultar este color</span>
                 </label>
             `;
             container.appendChild(div);
@@ -288,7 +281,7 @@
         }
 
         window.removeVariantRow = function(btn, variantId) {
-            if(variantId) deletedVariants.push(variantId);
+            if(variantId) deletedVariants.push(parseInt(variantId));
             btn.closest('.variant-row').remove();
         }
 
@@ -296,8 +289,7 @@
             document.getElementById('product-form').reset();
             document.getElementById('product-id').value = '';
             document.getElementById('form-title').innerText = 'Añadir Nuevo Producto';
-            document.getElementById('main-image-url').value = '';
-            document.getElementById('preview-main-image-url').innerHTML = '';
+            document.getElementById('is-visible').checked = true;
             document.getElementById('variants-container').innerHTML = '';
             deletedVariants = [];
         }
@@ -310,18 +302,20 @@
             btn.disabled = true;
 
             try {
-                const id = document.getElementById('product-id').value;
+                const idString = document.getElementById('product-id').value;
                 const name = document.getElementById('name').value;
                 const price = parseFloat(document.getElementById('price').value);
                 const description = document.getElementById('description').value;
-                const imageUrl = document.getElementById('main-image-url').value;
+                const isVisible = document.getElementById('is-visible').checked;
 
-                const productData = { name, price, description, image_url: imageUrl };
-                let productId = id;
+                // Datos exactos de 'products' (no hay image_url aquí)
+                const productData = { name, price, description, is_visible: isVisible };
+                let productId;
 
                 // 1. Guardar/Actualizar Producto
-                if (id) {
-                    const { error } = await supabase.from('products').update(productData).eq('id', id);
+                if (idString) {
+                    productId = parseInt(idString);
+                    const { error } = await supabase.from('products').update(productData).eq('id', productId);
                     if (error) throw error;
                 } else {
                     const { data, error } = await supabase.from('products').insert([productData]).select().single();
@@ -329,33 +323,34 @@
                     productId = data.id;
                 }
 
-                // 2. Gestionar Variantes
+                // 2. Gestionar Variantes ('product_variants')
                 const rows = document.querySelectorAll('.variant-row');
                 for (let row of rows) {
-                    const vId = row.querySelector('.var-id').value;
+                    const vIdString = row.querySelector('.var-id').value;
                     const vName = row.querySelector('.var-name').value;
-                    const vPrice = parseFloat(row.querySelector('.var-price').value || 0);
+                    const vHex = row.querySelector('.var-hex').value;
                     const vImages = row.querySelector('.var-images').value;
-                    const vHidden = row.querySelector('.var-hidden').checked;
+                    const vSoldOut = row.querySelector('.var-sold-out').checked;
 
+                    // Datos exactos de 'product_variants'
                     const vData = {
                         product_id: productId,
-                        name: vName,
-                        price_modifier: vPrice,
-                        image_urls: vImages,
-                        is_hidden: vHidden
+                        color_name: vName,
+                        color_hex: vHex,
+                        image_url: vImages,
+                        is_sold_out: vSoldOut
                     };
 
-                    if (vId) {
-                        await supabase.from('variants').update(vData).eq('id', vId);
+                    if (vIdString) {
+                        await supabase.from('product_variants').update(vData).eq('id', parseInt(vIdString));
                     } else {
-                        await supabase.from('variants').insert([vData]);
+                        await supabase.from('product_variants').insert([vData]);
                     }
                 }
 
                 // 3. Eliminar variantes borradas en el UI
                 if (deletedVariants.length > 0) {
-                    await supabase.from('variants').delete().in('id', deletedVariants);
+                    await supabase.from('product_variants').delete().in('id', deletedVariants);
                 }
 
                 alert('Producto guardado correctamente');
@@ -372,20 +367,18 @@
 
         // --- EDITAR PRODUCTO ---
         window.editProduct = async function(id) {
-            const { data: prod, error: errProd } = await supabase.from('products').select('*').eq('id', id).single();
+            const { data: prod, error: errProd } = await supabase.from('products').select('*').eq('id', parseInt(id)).single();
             if (errProd) return alert("Error al cargar producto");
 
             document.getElementById('product-id').value = prod.id;
             document.getElementById('name').value = prod.name;
             document.getElementById('price').value = prod.price;
             document.getElementById('description').value = prod.description || '';
-            
-            document.getElementById('main-image-url').value = prod.image_url || '';
-            renderImagePreviews('main-image-url');
+            document.getElementById('is-visible').checked = prod.is_visible !== false; // Si es null, asumimos true
 
             document.getElementById('variants-container').innerHTML = '';
             deletedVariants = [];
-            const { data: variants, error: errVar } = await supabase.from('variants').select('*').eq('product_id', id);
+            const { data: variants, error: errVar } = await supabase.from('product_variants').select('*').eq('product_id', parseInt(id));
             
             if (!errVar && variants) {
                 variants.forEach(v => addVariantRow(v));
@@ -398,30 +391,46 @@
         // --- ELIMINAR PRODUCTO ---
         window.deleteProduct = async function(id) {
             if (confirm('¿Eliminar producto de forma permanente?')) {
-                const { error } = await supabase.from('products').delete().eq('id', id);
-                if (error) alert('Error: ' + error.message);
+                const { error } = await supabase.from('products').delete().eq('id', parseInt(id));
+                if (error) alert('Error al eliminar: ' + error.message);
             }
         };
 
         // --- CARGAR CATÁLOGO ---
         async function loadCatalog() {
             const tbody = document.getElementById('catalog-body');
-            tbody.innerHTML = '<tr><td class="p-4">Cargando...</td></tr>';
-            const { data, error } = await supabase.from('products').select('*, variants(id)').order('created_at', { ascending: false });
+            tbody.innerHTML = '<tr><td class="p-4">Cargando catálogo...</td></tr>';
+            
+            // Traemos productos y sus variantes (product_variants)
+            const { data, error } = await supabase.from('products').select('*, product_variants(id, image_url)').order('created_at', { ascending: false });
 
-            if (error || !data) return tbody.innerHTML = '<tr><td class="p-4 text-red-500">Error al cargar el catálogo</td></tr>';
+            if (error) {
+                return tbody.innerHTML = `<tr><td class="p-4 text-red-500">Error al cargar: ${error.message}</td></tr>`;
+            }
+            if (!data || data.length === 0) {
+                return tbody.innerHTML = '<tr><td class="p-4 text-gray-500">No hay productos en el catálogo.</td></tr>';
+            }
 
-            let html = `<tr class="bg-gray-50 border-b"><th class="p-4">Img</th><th class="p-4">Producto</th><th class="p-4">Precio Base</th><th class="p-4">Variantes</th><th class="p-4">Acciones</th></tr>`;
+            let html = `<tr class="bg-gray-50 border-b"><th class="p-4">Img</th><th class="p-4">Producto</th><th class="p-4">Precio</th><th class="p-4">Colores</th><th class="p-4">Acciones</th></tr>`;
             data.forEach(p => {
-                const img = p.image_url ? `<img src="${p.image_url}" class="w-12 h-12 object-cover rounded border">` : '<div class="w-12 h-12 bg-gray-200 rounded"></div>';
-                const varCount = p.variants ? p.variants.length : 0;
+                // Buscamos la primera imagen de la primera variante para mostrarla en el catálogo
+                let firstImg = '';
+                if (p.product_variants && p.product_variants.length > 0 && p.product_variants[0].image_url) {
+                    firstImg = p.product_variants[0].image_url.split(',')[0];
+                }
+
+                const img = firstImg ? `<img src="${firstImg}" class="w-12 h-12 object-cover rounded border">` : '<div class="w-12 h-12 bg-gray-200 rounded"></div>';
+                const varCount = p.product_variants ? p.product_variants.length : 0;
                 
                 html += `
                     <tr class="border-b hover:bg-gray-50 transition">
                         <td class="p-4">${img}</td>
-                        <td class="p-4 font-bold">${p.name}</td>
+                        <td class="p-4 font-bold">
+                            ${p.name} 
+                            ${!p.is_visible ? '<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Oculto</span>' : ''}
+                        </td>
                         <td class="p-4">${p.price} €</td>
-                        <td class="p-4 text-sm text-gray-500">${varCount} colores/tallas</td>
+                        <td class="p-4 text-sm text-gray-500">${varCount} registrados</td>
                         <td class="p-4">
                             <button onclick="editProduct('${p.id}')" class="text-blue-600 font-bold mr-3 hover:underline">Editar</button>
                             <button onclick="deleteProduct('${p.id}')" class="text-red-600 font-bold hover:underline">Eliminar</button>
@@ -437,19 +446,15 @@
             const container = document.getElementById('orders-container');
             container.innerHTML = '<p>Cargando pedidos...</p>';
 
-            const { data, error } = await supabase
-                .from('orders')
-                .select(`
-                    *,
-                    order_items (
-                        quantity,
-                        price_at_purchase,
-                        products ( name )
-                    )
-                `)
-                .order('created_at', { ascending: false });
+            // No hacemos join porque tus items son un JSON en la columna 'items'
+            const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
 
-            if (error || !data) return container.innerHTML = '<p class="text-red-500">Error al cargar pedidos.</p>';
+            if (error) {
+                return container.innerHTML = `<p class="text-red-500">Error al cargar pedidos: ${error.message}</p>`;
+            }
+            if (!data || data.length === 0) {
+                return container.innerHTML = '<p class="text-gray-500">No hay pedidos registrados.</p>';
+            }
 
             let html = `<table class="w-full text-left border-collapse mt-4">
                 <thead><tr class="bg-gray-50 border-b">
@@ -465,22 +470,29 @@
                     : `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block border border-yellow-200">Pendiente</span>
                        <button onclick="markOrderCompleted('${order.id}')" class="block text-xs bg-black text-white px-2 py-1.5 rounded font-bold shadow hover:bg-gray-800">Marcar Completado</button>`;
 
+                // Leer el JSON de los artículos (columna 'items')
                 let itemsList = '';
-                if(order.order_items && order.order_items.length > 0) {
+                if(order.items && Array.isArray(order.items) && order.items.length > 0) {
                     itemsList = '<ul class="text-sm text-gray-700 list-disc list-inside mt-1 font-medium">';
-                    order.order_items.forEach(item => {
-                        const pName = item.products ? item.products.name : 'Producto Eliminado';
-                        itemsList += `<li>${item.quantity}x ${pName} (${item.price_at_purchase}€)</li>`;
+                    order.items.forEach(item => {
+                        // Adaptado para nombres típicos de un JSON de carrito
+                        const name = item.name || item.product_name || item.title || 'Producto';
+                        const qty = item.quantity || item.qty || 1;
+                        itemsList += `<li>${qty}x ${name}</li>`;
                     });
                     itemsList += '</ul>';
                 }
 
                 html += `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-4 text-sm"><span class="font-bold">#${order.id.slice(0,6)}...</span><br><span class="text-xs text-gray-500">${date}</span></td>
-                        <td class="p-4 text-sm"><b>${order.customer_name}</b><br>📧 ${order.customer_email}</td>
+                        <td class="p-4 text-sm"><span class="font-bold">#${order.id}</span><br><span class="text-xs text-gray-500">${date}</span></td>
+                        <td class="p-4 text-sm">
+                            <b>${order.customer_name || 'Desconocido'}</b><br>
+                            📧 ${order.customer_email || 'Sin email'}<br>
+                            📞 ${order.customer_phone || 'Sin teléfono'}
+                        </td>
                         <td class="p-4">${itemsList || '<span class="text-gray-400 text-sm">Sin detalles</span>'}</td>
-                        <td class="p-4 font-bold text-lg">${order.total_amount} €</td>
+                        <td class="p-4 font-bold text-lg">${order.total_price || 0} €</td>
                         <td class="p-4">${statusHtml}</td>
                     </tr>`;
             });
@@ -490,8 +502,8 @@
 
         window.markOrderCompleted = async function(id) {
             if (confirm('¿Completar pedido?')) {
-                await supabase.from('orders').update({ status: 'Completado' }).eq('id', id);
-                // No hace falta llamar a loadOrders() aquí porque el sistema Realtime ya lo va a recargar automáticamente al notar el cambio.
+                const { error } = await supabase.from('orders').update({ status: 'Completado' }).eq('id', parseInt(id));
+                if (error) alert("Error al completar: " + error.message);
             }
         };
 
