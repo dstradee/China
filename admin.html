@@ -116,69 +116,70 @@
 
     <script>
         // ==========================================
-        // 1. CONFIGURACIÓN
+        // 1. CONFIGURACIÓN (Evitando errores de redeclaración)
         // ==========================================
-        const supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
-        const supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        // Usamos 'var' en lugar de 'const' para que si el entorno recarga el código, no explote el JavaScript entero.
+        var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
+        var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
+        var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        const cloudinaryCloudName = 'dkg1ytbxb'; 
-        const cloudinaryUploadPreset = 'tienda_ropa'; 
+        var cloudinaryCloudName = 'dkg1ytbxb'; 
+        var cloudinaryUploadPreset = 'tienda_ropa'; 
 
         // ==========================================
-        // 2. AUTENTICACIÓN A PRUEBA DE BOMBAS
+        // 2. AUTENTICACIÓN
         // ==========================================
         
         function updateUI(session) {
-            const loginSection = document.getElementById('login-section');
-            const adminSection = document.getElementById('admin-section');
+            var loginSection = document.getElementById('login-section');
+            var adminSection = document.getElementById('admin-section');
             
             if (session) {
                 loginSection.classList.add('hidden');
                 adminSection.classList.remove('hidden');
-                loadCatalog(); // Cargamos el catálogo en cuanto sabemos que está dentro
+                loadCatalog();
             } else {
                 loginSection.classList.remove('hidden');
                 adminSection.classList.add('hidden');
             }
         }
 
-        // Comprobación inicial
         async function checkInitialSession() {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) console.error("Error comprobando sesión:", error);
-            updateUI(session);
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) console.error("Error comprobando sesión:", error);
+                updateUI(session);
+            } catch (err) {
+                console.error("Error crítico en checkInitialSession:", err);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             checkInitialSession();
-            addVariantRow(); // Preparamos el formulario
+            addVariantRow();
         });
 
-        // El formulario de Login
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const btn = document.getElementById('login-btn');
-            const errorContainer = document.getElementById('login-error');
-            const errorText = document.getElementById('login-error-text');
             
-            // Estado de carga
+            var email = document.getElementById('login-email').value;
+            var password = document.getElementById('login-password').value;
+            var btn = document.getElementById('login-btn');
+            var errorContainer = document.getElementById('login-error');
+            var errorText = document.getElementById('login-error-text');
+            
             btn.innerText = 'Comprobando datos...';
             btn.disabled = true;
             errorContainer.classList.add('hidden');
 
             try {
-                // Hacemos la llamada directa
                 const { data, error } = await supabase.auth.signInWithPassword({ 
                     email: email, 
                     password: password 
                 });
                 
                 if (error) {
-                    console.error("Supabase Error Completo:", error);
-                    // Aquí cazamos el error real y te lo decimos claro
+                    console.error("Supabase Login Error:", error);
                     let mensajeAmigable = error.message;
                     
                     if (error.message.includes('Invalid login credentials')) {
@@ -190,17 +191,15 @@
                     errorText.innerText = mensajeAmigable;
                     errorContainer.classList.remove('hidden');
                 } else if (data.session) {
-                    // Si todo va bien, entramos directamente a lo bruto
                     console.log("¡Login exitoso!");
                     document.getElementById('login-form').reset();
                     updateUI(data.session);
                 }
             } catch (err) {
-                console.error("Error crítico de JS:", err);
-                errorText.innerText = "Error en el navegador. Abre la consola (F12) para ver más detalles.";
+                console.error("Error crítico en login:", err);
+                errorText.innerText = "Error en la conexión. Revisa la consola.";
                 errorContainer.classList.remove('hidden');
             } finally {
-                // Restauramos el botón
                 btn.innerText = 'Entrar';
                 btn.disabled = false;
             }
@@ -229,68 +228,80 @@
         // 4. CATÁLOGO (LEER, OCULTAR Y BORRAR)
         // ==========================================
         async function loadCatalog() {
-            const tbody = document.getElementById('catalog-body');
+            var tbody = document.getElementById('catalog-body');
             tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center font-medium">Cargando catálogo...</td></tr>';
             
-            const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error("Error al cargar catálogo:", error);
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos de la base de datos.</td></tr>';
-                return;
-            }
+            try {
+                const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error("Error al cargar catálogo:", error);
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Error al cargar productos de la base de datos.</td></tr>';
+                    return;
+                }
 
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay productos subidos.</td></tr>';
-                return;
-            }
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aún no hay productos subidos.</td></tr>';
+                    return;
+                }
 
-            tbody.innerHTML = data.map(p => `
-                <tr class="border-b hover:bg-gray-50 transition-colors">
-                    <td class="p-3 text-sm text-gray-500">#${p.id}</td>
-                    <td class="p-3 font-semibold text-gray-800">${p.name}</td>
-                    <td class="p-3 text-gray-800">${p.price} €</td>
-                    <td class="p-3">
-                        <span class="px-2 py-1 text-xs rounded-full font-medium ${p.is_visible ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}">
-                            ${p.is_visible ? 'Visible' : 'Oculto'}
-                        </span>
-                    </td>
-                    <td class="p-3 text-right space-x-3">
-                        <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-bold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} transition">
-                            ${p.is_visible ? 'Ocultar' : 'Mostrar'}
-                        </button>
-                        <button onclick="deleteProduct(${p.id})" class="text-sm font-bold text-red-600 hover:text-red-800 transition">Borrar</button>
-                    </td>
-                </tr>
-            `).join('');
+                tbody.innerHTML = data.map(p => `
+                    <tr class="border-b hover:bg-gray-50 transition-colors">
+                        <td class="p-3 text-sm text-gray-500">#${p.id}</td>
+                        <td class="p-3 font-semibold text-gray-800">${p.name}</td>
+                        <td class="p-3 text-gray-800">${p.price} €</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 text-xs rounded-full font-medium ${p.is_visible ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}">
+                                ${p.is_visible ? 'Visible' : 'Oculto'}
+                            </span>
+                        </td>
+                        <td class="p-3 text-right space-x-3">
+                            <button onclick="toggleVisibility(${p.id}, ${p.is_visible})" class="text-sm font-bold ${p.is_visible ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} transition">
+                                ${p.is_visible ? 'Ocultar' : 'Mostrar'}
+                            </button>
+                            <button onclick="deleteProduct(${p.id})" class="text-sm font-bold text-red-600 hover:text-red-800 transition">Borrar</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Error en loadCatalog:", err);
+            }
         }
 
         async function toggleVisibility(id, currentStatus) {
-            const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
-            if (!error) loadCatalog();
-            else alert("Error al cambiar la visibilidad. Revisa la consola.");
+            try {
+                const { error } = await supabase.from('products').update({ is_visible: !currentStatus }).eq('id', id);
+                if (!error) loadCatalog();
+                else alert("Error al cambiar la visibilidad. Revisa la consola.");
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         async function deleteProduct(id) {
             if (!confirm("¿Seguro que quieres borrar este producto? (La foto no se borrará de Cloudinary por seguridad)")) return;
-            const { error } = await supabase.from('products').delete().eq('id', id);
-            if (!error) loadCatalog();
-            else {
-                console.error("Error borrando:", error);
-                alert("Error al borrar el producto.");
+            try {
+                const { error } = await supabase.from('products').delete().eq('id', id);
+                if (!error) loadCatalog();
+                else {
+                    console.error("Error borrando:", error);
+                    alert("Error al borrar el producto.");
+                }
+            } catch (err) {
+                console.error(err);
             }
         }
 
         // ==========================================
         // 5. GESTIÓN DE VARIANTES (INTERFAZ)
         // ==========================================
-        let variantCount = 0;
+        var variantCount = 0;
 
         function addVariantRow() {
             variantCount++;
-            const id = variantCount;
+            var id = variantCount;
             
-            const row = document.createElement('div');
+            var row = document.createElement('div');
             row.className = 'flex flex-wrap md:flex-nowrap items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200';
             row.id = `variant-${id}`;
             
@@ -327,7 +338,7 @@
         // 6. INTEGRACIÓN CLOUDINARY
         // ==========================================
         function openCloudinaryWidget(variantId) {
-            let myWidget = cloudinary.createUploadWidget({
+            var myWidget = cloudinary.createUploadWidget({
                 cloudName: cloudinaryCloudName, 
                 uploadPreset: cloudinaryUploadPreset,
                 sources: ['local', 'url', 'camera'],
@@ -349,8 +360,8 @@
         document.getElementById('product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const btn = document.getElementById('submit-btn');
-            const msg = document.getElementById('status-msg');
+            var btn = document.getElementById('submit-btn');
+            var msg = document.getElementById('status-msg');
             
             btn.disabled = true;
             btn.innerText = "Guardando...";
