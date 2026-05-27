@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Éxito con Javi | Escaparate</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS para el diseño rápido y limpio -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        nardo: '#686A6C',
+                        nardo: '#686A6C', // Gris Nardo personalizado
                     }
                 }
             }
@@ -24,6 +24,7 @@
     <header class="bg-white/10 backdrop-blur-md shadow-sm sticky top-0 z-10">
         <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-white tracking-wider uppercase">Éxito con Javi</h1>
+            <!-- Un icono de carrito de adorno por ahora -->
             <button class="text-white hover:text-gray-200 transition focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
             </button>
@@ -31,63 +32,99 @@
     </header>
 
     <!-- Contenedor Principal de Productos -->
-    <main class="max-w-6xl mx-auto px-4 py-12">
-        <div class="mb-8">
-            <h2 class="text-3xl font-bold text-white mb-2">Novedades</h2>
-            <p class="text-gray-200">Echa un vistazo a las últimas prendas.</p>
+    <main class="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        <div class="mb-6 md:mb-8">
+            <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Novedades</h2>
+            <p class="text-gray-200 text-sm md:text-base">Echa un vistazo a las últimas prendas.</p>
         </div>
 
-        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <!-- Cuadrícula de productos: 2 columnas en móvil, 3 en tablet, 4 en PC -->
+        <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
             <!-- Los productos se cargarán aquí dinámicamente -->
         </div>
     </main>
 
-    <!-- MODAL DEL PRODUCTO -->
-    <div id="product-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col md:flex-row relative transform scale-95 transition-transform duration-300" id="modal-content">
+    <!-- MODAL DEL PRODUCTO (Pantalla completa / emergente) -->
+    <div id="product-modal" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-sm flex items-end md:items-center justify-center md:p-6 opacity-0 transition-opacity duration-300">
+        
+        <!-- Contenedor del Modal: Estilo "App" en móvil, Gigante en PC -->
+        <div class="bg-white rounded-t-3xl md:rounded-2xl shadow-2xl w-full max-w-[100vw] md:max-w-6xl h-[92vh] md:h-[85vh] overflow-hidden flex flex-col md:flex-row relative transform translate-y-full md:translate-y-0 md:scale-95 transition-transform duration-300" id="modal-content">
             
-            <button onclick="closeModal()" class="absolute top-4 right-4 z-10 bg-white/50 hover:bg-white rounded-full p-2 text-gray-800 transition backdrop-blur-md focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <!-- Botón de cerrar -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-20 bg-white/80 hover:bg-white rounded-full p-2.5 text-gray-900 shadow-lg backdrop-blur-md transition-all focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
 
-            <div class="w-full md:w-1/2 bg-gray-100 min-h-[300px] flex items-center justify-center relative p-8" id="modal-image-container">
+            <!-- Zona de la Imagen del Modal con Carrusel -->
+            <div class="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center h-1/2 md:h-full shrink-0 group">
+                <!-- Contenedor de la foto activa -->
+                <div id="modal-image-container" class="w-full h-full relative"></div>
+                
+                <!-- Flechas del Carrusel (Se ocultan si solo hay 1 foto) -->
+                <div id="carousel-arrows" class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 pointer-events-none hidden z-10">
+                    <button onclick="prevImage(event)" class="pointer-events-auto bg-white/90 hover:bg-white text-black p-3 rounded-full shadow-lg backdrop-blur-md transition-transform hover:scale-110 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <button onclick="nextImage(event)" class="pointer-events-auto bg-white/90 hover:bg-white text-black p-3 rounded-full shadow-lg backdrop-blur-md transition-transform hover:scale-110 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+
+                <!-- Indicador de página (ej. 1/3) -->
+                <div id="carousel-indicator" class="absolute bottom-4 right-4 bg-black/50 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm hidden z-10">
+                    1 / 1
+                </div>
             </div>
 
-            <div class="w-full md:w-1/2 p-8 flex flex-col">
-                <h2 class="text-3xl font-bold text-gray-900 mb-2" id="modal-title">Nombre</h2>
-                <p class="text-2xl font-black text-gray-900 mb-6" id="modal-price">0.00 €</p>
-                <p class="text-gray-600 mb-8 leading-relaxed" id="modal-description">Descripción...</p>
+            <!-- Zona de la Info del Modal -->
+            <div class="w-full md:w-2/5 p-6 md:p-10 flex flex-col overflow-y-auto">
+                <h2 class="text-2xl md:text-4xl font-bold text-gray-900 mb-2" id="modal-title">Nombre</h2>
+                <p class="text-xl md:text-3xl font-black text-gray-900 mb-6" id="modal-price">0.00 €</p>
+                
+                <p class="text-gray-600 text-sm md:text-base mb-8 leading-relaxed" id="modal-description">Descripción...</p>
                 
                 <div class="mt-auto">
-                    <p class="text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Color seleccionado</p>
-                    <div class="flex gap-3 mb-8" id="modal-colors-container"></div>
+                    <p class="text-xs md:text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Color seleccionado</p>
+                    <div class="flex flex-wrap gap-3 mb-8" id="modal-colors-container">
+                        <!-- Colores se inyectan por JS -->
+                    </div>
+                    
+                    <button class="w-full bg-black text-white py-4 md:py-5 rounded-xl font-bold text-base md:text-lg hover:bg-gray-800 transition-colors shadow-xl hover:shadow-2xl">
+                        Añadir al carrito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Importamos el cliente de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- Lógica de la aplicación -->
     <script>
         // ==========================================
-        // 0. CONFIGURACIÓN DE SUPABASE
+        // 1. CONFIGURACIÓN DE SUPABASE
         // ==========================================
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
-        
-        var supabase;
-        try {
-            supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-        } catch(e) {
-            console.warn("Falta configurar la URL de Supabase.", e);
-        }
+        var supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        // Variable global para guardar los productos reales que vengan de la BD
         var appProducts = []; 
         var currentModalProduct = null;
+        
+        // Variables para el carrusel
+        var currentCarouselImages = [];
+        var currentCarouselIndex = 0;
 
-        const getPlaceholder = (colorHex) => `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="${colorHex}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-lg transition-colors duration-300"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>`;
+        const getPlaceholder = (colorHex) => `<div class="w-full h-full flex items-center justify-center bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="${colorHex}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-sm opacity-50"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg></div>`;
 
-        const renderImage = (variant) => variant.image_url 
-            ? `<img src="${variant.image_url}" alt="Variante" class="w-full h-full object-cover">`
-            : getPlaceholder(variant.color_hex);
+        // Renderiza la primera imagen de una variante (Para las tarjetas pequeñas)
+        const renderFirstImage = (variant) => {
+            if (!variant.image_url) return getPlaceholder(variant.color_hex);
+            // Si hay varias URLs separadas por coma, coge la primera
+            const firstUrl = variant.image_url.split(',')[0].trim();
+            return `<img src="${firstUrl}" alt="Variante" class="w-full h-full object-cover">`;
+        };
 
         // ==========================================
         // 2. RENDERIZADO DEL ESCAPARATE
@@ -107,7 +144,7 @@
                 const colorsHTML = product.variants.map((variant, index) => 
                     `<button 
                         onclick="changeCardImage(${product.id}, ${index}, event)" 
-                        class="w-6 h-6 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform shadow-sm focus:outline-none focus:border-black" 
+                        class="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform shadow-sm focus:outline-none focus:border-black shrink-0" 
                         style="background-color: ${variant.color_hex};" 
                         title="${variant.color_name}"></button>`
                 ).join('');
@@ -116,21 +153,23 @@
 
                 const productCard = `
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer group" onclick="openModal(${product.id})">
-                        <div class="aspect-[4/3] bg-gray-50 flex items-center justify-center border-b border-gray-100 relative overflow-hidden" id="card-img-container-${product.id}">
-                            ${renderImage(defaultVariant)}
+                        
+                        <!-- Imagen en proporción 4:5 (Mejor para ropa) -->
+                        <div class="aspect-[4/5] bg-gray-50 flex items-center justify-center border-b border-gray-100 relative overflow-hidden" id="card-img-container-${product.id}">
+                            ${renderFirstImage(defaultVariant)}
                         </div>
-                        <div class="p-5 flex flex-col flex-grow">
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="text-lg font-bold text-gray-900 group-hover:text-nardo transition-colors">${product.name}</h3>
-                                <p class="text-lg font-black text-gray-900">${product.price}€</p>
+
+                        <!-- Info del Producto -->
+                        <div class="p-3 md:p-5 flex flex-col flex-grow">
+                            <div class="flex flex-col md:flex-row justify-between md:items-start mb-2 gap-1 md:gap-2">
+                                <h3 class="text-sm md:text-lg font-bold text-gray-900 group-hover:text-nardo transition-colors leading-tight">${product.name}</h3>
+                                <p class="text-sm md:text-lg font-black text-gray-900 whitespace-nowrap">${product.price}€</p>
                             </div>
-                            <div class="mt-auto pt-4 flex items-center justify-between">
-                                <div class="flex gap-2">
+                            
+                            <div class="mt-auto pt-3 md:pt-4 flex items-center justify-between">
+                                <div class="flex gap-1 md:gap-2 overflow-x-auto pb-1 no-scrollbar">
                                     ${colorsHTML}
                                 </div>
-                                <button class="text-sm font-semibold text-nardo hover:text-black transition-colors" onclick="openModal(${product.id}); event.stopPropagation();">
-                                    Ver producto &rarr;
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -140,24 +179,75 @@
         }
 
         // ==========================================
-        // 3. LÓGICA DE INTERACCIÓN Y MODAL
+        // 3. LÓGICA DE INTERACCIÓN, MODAL Y CARRUSEL
         // ==========================================
         function changeCardImage(productId, variantIndex, event) {
             if(event) event.stopPropagation(); 
             const product = appProducts.find(p => p.id === productId);
             const container = document.getElementById(`card-img-container-${productId}`);
-            if (product && container) container.innerHTML = renderImage(product.variants[variantIndex]);
+            if (product && container) container.innerHTML = renderFirstImage(product.variants[variantIndex]);
         }
 
+        // Lógica del Carrusel
+        function renderCarouselImage() {
+            const container = document.getElementById('modal-image-container');
+            const arrows = document.getElementById('carousel-arrows');
+            const indicator = document.getElementById('carousel-indicator');
+
+            if (currentCarouselImages.length === 0) {
+                container.innerHTML = getPlaceholder(currentModalProduct.variants[0]?.color_hex || '#000');
+                arrows.classList.add('hidden');
+                indicator.classList.add('hidden');
+                return;
+            }
+
+            const imgUrl = currentCarouselImages[currentCarouselIndex];
+            container.innerHTML = `<img src="${imgUrl}" alt="Vista producto" class="w-full h-full object-cover md:object-contain absolute inset-0">`;
+
+            if (currentCarouselImages.length > 1) {
+                arrows.classList.remove('hidden');
+                indicator.classList.remove('hidden');
+                indicator.innerText = `${currentCarouselIndex + 1} / ${currentCarouselImages.length}`;
+            } else {
+                arrows.classList.add('hidden');
+                indicator.classList.add('hidden');
+            }
+        }
+
+        function nextImage(e) {
+            if(e) e.stopPropagation();
+            if (currentCarouselImages.length <= 1) return;
+            currentCarouselIndex = (currentCarouselIndex + 1) % currentCarouselImages.length;
+            renderCarouselImage();
+        }
+
+        function prevImage(e) {
+            if(e) e.stopPropagation();
+            if (currentCarouselImages.length <= 1) return;
+            currentCarouselIndex = (currentCarouselIndex - 1 + currentCarouselImages.length) % currentCarouselImages.length;
+            renderCarouselImage();
+        }
+
+        // Al seleccionar un color en el modal
         function changeModalImage(variantIndex) {
             if (!currentModalProduct) return;
             const variant = currentModalProduct.variants[variantIndex];
-            document.getElementById('modal-image-container').innerHTML = renderImage(variant);
             
+            // MAGIA: Si el usuario ha puesto varias URLs separadas por coma en la base de datos, lo convertimos en array
+            if (variant.image_url) {
+                currentCarouselImages = variant.image_url.split(',').map(url => url.trim()).filter(url => url !== "");
+            } else {
+                currentCarouselImages = [];
+            }
+            
+            currentCarouselIndex = 0;
+            renderCarouselImage();
+            
+            // Actualizar estilo de los botones de color
             const buttons = document.querySelectorAll('.modal-color-btn');
             buttons.forEach((btn, idx) => {
-                if (idx === variantIndex) btn.classList.add('ring-2', 'ring-offset-2', 'ring-black');
-                else btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black');
+                if (idx === variantIndex) btn.classList.add('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
+                else btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
             });
         }
 
@@ -173,7 +263,7 @@
             const colorsHTML = product.variants.map((variant, index) => 
                 `<button 
                     onclick="changeModalImage(${index})" 
-                    class="modal-color-btn w-8 h-8 rounded-full border border-gray-200 hover:scale-110 transition-all shadow-sm focus:outline-none" 
+                    class="modal-color-btn w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-200 hover:scale-110 transition-all shadow-sm focus:outline-none shrink-0" 
                     style="background-color: ${variant.color_hex};" 
                     title="${variant.color_name}"></button>`
             ).join('');
@@ -185,8 +275,10 @@
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
-                modalContent.classList.remove('scale-95');
+                // En móvil sube desde abajo (translate-y-0), en PC se quita el scale
+                modalContent.classList.remove('translate-y-full', 'md:scale-95');
             }, 10);
+            
             changeModalImage(0);
         }
 
@@ -195,7 +287,8 @@
             const modalContent = document.getElementById('modal-content');
             
             modal.classList.add('opacity-0');
-            modalContent.classList.add('scale-95');
+            // Volvemos a ocultar hacia abajo en móvil, o escalar en PC
+            modalContent.classList.add('translate-y-full', 'md:scale-95');
             
             setTimeout(() => {
                 modal.classList.add('hidden');
@@ -203,6 +296,7 @@
             }, 300);
         }
 
+        // Cerrar al pulsar fuera del modal
         document.getElementById('product-modal').addEventListener('click', function(event) {
             if (event.target === this) closeModal();
         });
@@ -212,46 +306,36 @@
         // ==========================================
         async function fetchAndLoadProducts() {
             try {
-                // Hacemos una consulta relacional: Traemos el producto y sus variantes a la vez
-                // Supabase filtrará automáticamente los que tengan is_visible = false por nuestro SQL anterior
+                // Supabase solo nos va a devolver los que tengan is_visible = true
                 const { data, error } = await supabase
                     .from('products')
                     .select('*, variants:product_variants(*)');
 
                 if (error) throw error;
 
-                appProducts = data; // Guardamos los datos reales en nuestra variable global
+                appProducts = data;
                 renderProducts(appProducts);
-
             } catch (error) {
                 console.error("Error al cargar desde Supabase:", error);
-                document.getElementById('product-grid').innerHTML = 
-                    `<p class="col-span-full text-center text-white font-bold">Error al conectar con la base de datos.</p>`;
             }
         }
 
         // ==========================================
-        // 5. 🔥 LA MAGIA: SUPABASE REALTIME 🔥
+        // 5. SUPABASE REALTIME (Tiempo Real)
         // ==========================================
         function setupRealtime() {
-            // Nos suscribimos a CUALQUIER cambio (UPDATE, INSERT, DELETE) en la tabla 'products'
             supabase
                 .channel('public:products')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
-                    console.log('¡Cambio detectado en base de datos en tiempo real!', payload);
-                    
-                    // Al haber un cambio, volvemos a descargar y pintar los productos.
+                    console.log('¡Cambio detectado en BD!', payload);
                     fetchAndLoadProducts();
                     
-                    // CONTROL ANTI-FANTASMAS:
-                    // Si el cliente estaba mirando en el modal (ventana grande) el producto que acabamos de ocultar o borrar, se lo cerramos en la cara por seguridad.
+                    // Control anti-fantasmas si el producto se oculta mientras alguien lo mira
                     if (currentModalProduct) {
-                        // Si se ocultó (UPDATE a is_visible = false)
-                        if (payload.eventType === 'UPDATE' && payload.new && payload.new.is_visible === false && payload.new.id === currentModalProduct.id) {
+                        if (payload.eventType === 'UPDATE' && payload.new.is_visible === false && payload.new.id === currentModalProduct.id) {
                             closeModal();
                         }
-                        // Si se borró (DELETE total)
-                        if (payload.eventType === 'DELETE' && payload.old && payload.old.id === currentModalProduct.id) {
+                        if (payload.eventType === 'DELETE' && payload.old.id === currentModalProduct.id) {
                             closeModal();
                         }
                     }
@@ -260,10 +344,21 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchAndLoadProducts(); // Carga inicial
-            setupRealtime();        // Activamos la antena del tiempo real
+            fetchAndLoadProducts(); 
+            setupRealtime();        
         });
 
     </script>
+    
+    <style>
+        /* Ocultar barra de scroll en contenedores pequeños */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
 </body>
 </html>
