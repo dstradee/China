@@ -151,13 +151,12 @@
             }
         }
 
-        // --- CARGAR CATÁLOGO DESDE SUPABASE ---
+        // --- CARGAR CATÁLOGO DESDE LA TABLA 'products' ---
         async function loadCatalog() {
             const tbody = document.getElementById('catalog-body');
             tbody.innerHTML = '<tr><td class="p-4 text-gray-500">Cargando productos...</td></tr>';
 
-            // ATENCIÓN: Si tu tabla en Supabase se llama "products" en lugar de "productos", cámbialo aquí abajo.
-            const { data, error } = await supabase.from('productos').select('*');
+            const { data, error } = await supabase.from('products').select('*');
 
             if (error) {
                 tbody.innerHTML = `<tr><td class="p-4 text-red-500">Error al cargar: ${error.message}</td></tr>`;
@@ -180,8 +179,8 @@
             data.forEach(product => {
                 html += `
                     <tr class="border-b hover:bg-gray-50 transition">
-                        <td class="p-4">${product.nombre || product.name || 'Sin nombre'}</td>
-                        <td class="p-4 font-medium">${product.precio || product.price || '0.00'} €</td>
+                        <td class="p-4">${product.name || product.nombre || 'Sin nombre'}</td>
+                        <td class="p-4 font-medium">${product.price || product.precio || '0.00'} €</td>
                         <td class="p-4">
                             <button class="text-blue-600 hover:underline mr-4">Editar</button>
                             <button class="text-red-600 hover:underline">Eliminar</button>
@@ -193,13 +192,12 @@
             tbody.innerHTML = html;
         }
 
-        // --- CARGAR PEDIDOS DESDE SUPABASE ---
+        // --- CARGAR PEDIDOS DESDE LA TABLA 'orders' ---
         async function loadOrders() {
             const container = document.getElementById('orders-container');
             container.innerHTML = '<p class="text-gray-500">Cargando pedidos...</p>';
 
-            // ATENCIÓN: Si tu tabla en Supabase se llama "orders" en lugar de "pedidos", cámbialo aquí abajo.
-            const { data, error } = await supabase.from('pedidos').select('*').order('created_at', { ascending: false });
+            const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
 
             if (error) {
                 container.innerHTML = `<p class="text-red-500">Error al cargar: ${error.message}</p>`;
@@ -231,11 +229,11 @@
                     <tr class="border-b hover:bg-gray-50 transition">
                         <td class="p-4 text-sm text-gray-500">#${order.id}</td>
                         <td class="p-4">${date}</td>
-                        <td class="p-4">${order.cliente || order.customer_name || 'Desconocido'}</td>
-                        <td class="p-4 font-medium">${order.total || order.precio_total || '0.00'} €</td>
+                        <td class="p-4">${order.customer_name || order.cliente || 'Desconocido'}</td>
+                        <td class="p-4 font-medium">${order.total_price || order.total || order.precio_total || '0.00'} €</td>
                         <td class="p-4">
                             <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
-                                ${order.estado || order.status || 'Completado'}
+                                ${order.status || order.estado || 'Completado'}
                             </span>
                         </td>
                     </tr>
