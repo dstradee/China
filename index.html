@@ -91,7 +91,7 @@
                         <!-- Colores se inyectan por JS -->
                     </div>
 
-                    <!-- NUEVO: Selector de Tallas -->
+                    <!-- Selector de Tallas -->
                     <p class="text-xs md:text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Talla</p>
                     <div class="flex flex-wrap gap-2 mb-6" id="modal-sizes-container">
                         <!-- Tallas se inyectan por JS -->
@@ -139,7 +139,7 @@
                 <span id="cart-total" class="text-2xl font-black text-gray-900">0.00 €</span>
             </div>
 
-            <!-- Formulario de Checkout (Campos obligatorios "required") -->
+            <!-- Formulario de Checkout -->
             <form id="checkout-form" class="space-y-3 mt-2 hidden">
                 <h3 class="font-bold text-gray-800 text-sm mb-2 border-b pb-1">Datos de envío</h3>
                 <input type="text" id="order-name" required placeholder="Nombre y Apellidos" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black outline-none text-sm">
@@ -181,7 +181,7 @@
         var appProducts = []; 
         var currentModalProduct = null;
         var currentVariantIndex = 0; 
-        var currentSelectedSize = null; // NUEVO: Estado de la talla
+        var currentSelectedSize = null; 
         
         let cart = JSON.parse(localStorage.getItem('nardo_cart')) || [];
         var currentCarouselImages = [];
@@ -315,7 +315,6 @@
                 else btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
             });
 
-            // NUEVO: Renderizar botones de tallas para el color seleccionado
             const sizes = variant.available_sizes ? variant.available_sizes.split(',').map(s => s.trim()).filter(s => s !== '') : [];
             const sizesContainer = document.getElementById('modal-sizes-container');
             
@@ -323,7 +322,7 @@
                 sizesContainer.innerHTML = '<span class="text-sm text-gray-500 italic">No hay tallas configuradas</span>';
                 currentSelectedSize = null;
             } else {
-                currentSelectedSize = sizes[0]; // Selecciona la primera talla por defecto
+                currentSelectedSize = sizes[0]; 
                 sizesContainer.innerHTML = sizes.map(sz => `
                     <button onclick="selectSize('${sz}')" class="modal-size-btn border-2 ${sz === currentSelectedSize ? 'border-black text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'} font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors focus:outline-none">
                         ${sz}
@@ -350,7 +349,6 @@
             }
         }
 
-        // NUEVO: Función para seleccionar la talla
         window.selectSize = function(sz) {
             currentSelectedSize = sz;
             const btns = document.querySelectorAll('.modal-size-btn');
@@ -444,7 +442,6 @@
 
             if (variant.is_sold_out) return; 
 
-            // Control de seguridad por si le dan a añadir sin haber talla (raro porque se autoselecciona la 1ª)
             if (!currentSelectedSize && variant.available_sizes) {
                 alert('Por favor, selecciona una talla antes de añadir al carrito.');
                 return;
@@ -452,7 +449,6 @@
 
             const qty = parseInt(document.getElementById('modal-qty').value);
             
-            // NUEVO: Que busque un item que sea el mismo producto, mismo color Y misma talla
             const existingItemIndex = cart.findIndex(item => 
                 item.productId === currentModalProduct.id && 
                 item.variantIndex === currentVariantIndex && 
@@ -471,7 +467,7 @@
                     price: currentModalProduct.price,
                     colorName: variant.color_name,
                     colorHex: variant.color_hex,
-                    size: currentSelectedSize, // Guardamos la talla seleccionada
+                    size: currentSelectedSize, 
                     imageUrl: cartImage,
                     quantity: qty
                 });
@@ -549,7 +545,6 @@
                         ? `<img src="${item.imageUrl}" class="w-16 h-16 object-cover rounded-md border border-gray-200">`
                         : `<div class="w-16 h-16 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center"><div class="w-6 h-6 rounded-full" style="background-color: ${item.colorHex}"></div></div>`;
 
-                    // NUEVO: Mostrar la talla junto al nombre en el carrito
                     const itemSizeText = item.size ? ` - Talla ${item.size}` : '';
 
                     container.innerHTML += `
@@ -618,7 +613,6 @@
                 if (TELEGRAM_CHAT_IDS.length === 0) {
                     console.warn("Faltan los Chat IDs de Telegram.");
                 } else {
-                    // NUEVO: La talla ahora también llega por Telegram
                     const telegramText = `🔥 ¡NUEVO PEDIDO! 🔥\n\n👤 Nombre: ${name}\n📧 Email: ${email}\n📞 Teléfono: ${phone}\n💰 Total: ${total.toFixed(2)} €\n\n📦 PRODUCTOS:\n${cart.map(item => {
                         const itemSizeText = item.size ? ` - Talla ${item.size}` : '';
                         return `- ${item.quantity}x ${item.name}${itemSizeText} (${item.colorName})`;
@@ -658,7 +652,7 @@
         });
 
         // ==========================================
-        // 6. CONEXIÓN A SUPABASE Y DATOS (Filtro Anti-Fantasmas)
+        // 6. CONEXIÓN A SUPABASE Y DATOS 
         // ==========================================
         async function fetchAndLoadProducts() {
             try {
@@ -681,7 +675,7 @@
         }
 
         // ==========================================
-        // 7. SUPABASE REALTIME (Tiempo Real)
+        // 7. SUPABASE REALTIME
         // ==========================================
         function setupRealtime() {
             supabase
@@ -712,10 +706,44 @@
         });
 
     </script>
+
+    <!-- ========================================== -->
+    <!-- SISTEMA DE TRADUCCIÓN AUTOMÁTICA INVISIBLE -->
+    <!-- ========================================== -->
+    <div id="google_translate_element"></div>
     
     <style>
+        /* Ocultamos todo el rastro visual de Google para no romper tu diseño */
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        body { top: 0px !important; }
+        #goog-gt-tt { display: none !important; } /* Oculta el tooltip al pasar el ratón */
+        #google_translate_element { display: none !important; }
+        
+        /* Mantenemos tus estilos de scrollbar */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
+
+    <script type="text/javascript">
+        // 1. Detectamos el idioma del navegador del usuario (ej: 'en', 'sv', 'fr')
+        var userLang = (navigator.language || navigator.userLanguage).split('-')[0];
+        
+        // 2. Si su idioma NO es el español y es la primera vez que entra, le forzamos la traducción
+        if (userLang !== 'es' && document.cookie.indexOf('googtrans') === -1) {
+            // Creamos la cookie que Google lee para traducir automáticamente
+            document.cookie = "googtrans=/es/" + userLang + "; path=/";
+            document.cookie = "googtrans=/es/" + userLang + "; domain=" + window.location.hostname + "; path=/";
+        }
+
+        // 3. Inicializamos el traductor de Google de forma silenciosa
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'es', 
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 </body>
 </html>
