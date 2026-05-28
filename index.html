@@ -85,12 +85,19 @@
                 <p class="text-gray-600 text-sm md:text-base mb-8 leading-relaxed" id="modal-description">Descripción...</p>
                 
                 <div class="mt-auto">
+                    <!-- Colores -->
                     <p class="text-xs md:text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Color seleccionado</p>
                     <div class="flex flex-wrap gap-3 mb-6" id="modal-colors-container">
                         <!-- Colores se inyectan por JS -->
                     </div>
+
+                    <!-- NUEVO: Selector de Tallas -->
+                    <p class="text-xs md:text-sm text-gray-500 mb-3 uppercase font-bold tracking-wider">Talla</p>
+                    <div class="flex flex-wrap gap-2 mb-6" id="modal-sizes-container">
+                        <!-- Tallas se inyectan por JS -->
+                    </div>
                     
-                    <!-- NUEVO: Selector de cantidad (1 a 500) -->
+                    <!-- Selector de cantidad -->
                     <p class="text-xs md:text-sm text-gray-500 mb-2 uppercase font-bold tracking-wider">Cantidad</p>
                     <div class="flex items-center gap-4 mb-6 md:mb-8">
                         <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -101,7 +108,7 @@
                         <span class="text-xs text-gray-400">Máx: 500</span>
                     </div>
 
-                    <!-- BOTÓN AÑADIR CON ID PARA PODER MODIFICAR SU ESTADO -->
+                    <!-- BOTÓN AÑADIR -->
                     <button id="modal-add-to-cart-btn" onclick="addToCart()" class="w-full bg-black text-white py-4 md:py-5 rounded-xl font-bold text-base md:text-lg hover:bg-gray-800 transition-colors shadow-xl hover:shadow-2xl focus:outline-none active:scale-[0.98]">
                         Añadir al carrito
                     </button>
@@ -174,6 +181,7 @@
         var appProducts = []; 
         var currentModalProduct = null;
         var currentVariantIndex = 0; 
+        var currentSelectedSize = null; // NUEVO: Estado de la talla
         
         let cart = JSON.parse(localStorage.getItem('nardo_cart')) || [];
         var currentCarouselImages = [];
@@ -203,7 +211,6 @@
             products.forEach(product => {
                 if (!product.variants || product.variants.length === 0) return;
 
-                // CÓDIGO ACTUALIZADO: El botón tiene opacidad y una línea cruzada roja si está agotado
                 const colorsHTML = product.variants.map((variant, index) => 
                     `<button 
                         onclick="changeCardImage(${product.id}, ${index}, event)" 
@@ -308,11 +315,31 @@
                 else btn.classList.remove('ring-2', 'ring-offset-2', 'ring-black', 'scale-110');
             });
 
-            // CÓDIGO ACTUALIZADO: Comprobar si está agotado y deshabilitar/cambiar el botón del carrito
+            // NUEVO: Renderizar botones de tallas para el color seleccionado
+            const sizes = variant.available_sizes ? variant.available_sizes.split(',').map(s => s.trim()).filter(s => s !== '') : [];
+            const sizesContainer = document.getElementById('modal-sizes-container');
+            
+            if (sizes.length === 0) {
+                sizesContainer.innerHTML = '<span class="text-sm text-gray-500 italic">No hay tallas configuradas</span>';
+                currentSelectedSize = null;
+            } else {
+                currentSelectedSize = sizes[0]; // Selecciona la primera talla por defecto
+                sizesContainer.innerHTML = sizes.map(sz => `
+                    <button onclick="selectSize('${sz}')" class="modal-size-btn border-2 ${sz === currentSelectedSize ? 'border-black text-black' : 'border-gray-200 text-gray-500 hover:border-gray-300'} font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-lg transition-colors focus:outline-none">
+                        ${sz}
+                    </button>
+                `).join('');
+            }
+
             const cartBtn = document.getElementById('modal-add-to-cart-btn');
             if (variant.is_sold_out) {
                 cartBtn.disabled = true;
                 cartBtn.innerText = 'Color Agotado';
+                cartBtn.classList.remove('bg-black', 'hover:bg-gray-800', 'active:scale-[0.98]');
+                cartBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            } else if (sizes.length === 0) {
+                cartBtn.disabled = true;
+                cartBtn.innerText = 'Sin tallas disponibles';
                 cartBtn.classList.remove('bg-black', 'hover:bg-gray-800', 'active:scale-[0.98]');
                 cartBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
             } else {
@@ -323,6 +350,21 @@
             }
         }
 
+        // NUEVO: Función para seleccionar la talla
+        window.selectSize = function(sz) {
+            currentSelectedSize = sz;
+            const btns = document.querySelectorAll('.modal-size-btn');
+            btns.forEach(btn => {
+                if (btn.innerText.trim() === sz) {
+                    btn.classList.add('border-black', 'text-black');
+                    btn.classList.remove('border-gray-200', 'text-gray-500');
+                } else {
+                    btn.classList.remove('border-black', 'text-black');
+                    btn.classList.add('border-gray-200', 'text-gray-500');
+                }
+            });
+        };
+
         function openModal(productId) {
             const product = appProducts.find(p => p.id === productId);
             if (!product) return;
@@ -332,7 +374,6 @@
             document.getElementById('modal-price').innerText = `${product.price} €`;
             document.getElementById('modal-description').innerText = product.description || 'Sin descripción';
             
-            // CÓDIGO ACTUALIZADO: Botones del modal con efecto visual de agotado
             const colorsHTML = product.variants.map((variant, index) => 
                 `<button 
                     onclick="changeModalImage(${index})" 
@@ -401,12 +442,22 @@
             
             const variant = currentModalProduct.variants[currentVariantIndex];
 
-            // CÓDIGO ACTUALIZADO: Filtro de seguridad (por si modifican el HTML en consola)
             if (variant.is_sold_out) return; 
+
+            // Control de seguridad por si le dan a añadir sin haber talla (raro porque se autoselecciona la 1ª)
+            if (!currentSelectedSize && variant.available_sizes) {
+                alert('Por favor, selecciona una talla antes de añadir al carrito.');
+                return;
+            }
 
             const qty = parseInt(document.getElementById('modal-qty').value);
             
-            const existingItemIndex = cart.findIndex(item => item.productId === currentModalProduct.id && item.variantIndex === currentVariantIndex);
+            // NUEVO: Que busque un item que sea el mismo producto, mismo color Y misma talla
+            const existingItemIndex = cart.findIndex(item => 
+                item.productId === currentModalProduct.id && 
+                item.variantIndex === currentVariantIndex && 
+                item.size === currentSelectedSize
+            );
             
             if (existingItemIndex > -1) {
                 cart[existingItemIndex].quantity += qty;
@@ -420,6 +471,7 @@
                     price: currentModalProduct.price,
                     colorName: variant.color_name,
                     colorHex: variant.color_hex,
+                    size: currentSelectedSize, // Guardamos la talla seleccionada
                     imageUrl: cartImage,
                     quantity: qty
                 });
@@ -497,11 +549,14 @@
                         ? `<img src="${item.imageUrl}" class="w-16 h-16 object-cover rounded-md border border-gray-200">`
                         : `<div class="w-16 h-16 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center"><div class="w-6 h-6 rounded-full" style="background-color: ${item.colorHex}"></div></div>`;
 
+                    // NUEVO: Mostrar la talla junto al nombre en el carrito
+                    const itemSizeText = item.size ? ` - Talla ${item.size}` : '';
+
                     container.innerHTML += `
                         <div class="flex gap-4 items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
                             ${imgHtml}
                             <div class="flex-1">
-                                <h4 class="font-bold text-gray-900 text-sm">${item.name}</h4>
+                                <h4 class="font-bold text-gray-900 text-sm">${item.name}${itemSizeText}</h4>
                                 <div class="flex items-center gap-2 mt-1">
                                     <div class="w-3 h-3 rounded-full border border-gray-300" style="background-color: ${item.colorHex}"></div>
                                     <span class="text-xs text-gray-500">${item.colorName}</span>
@@ -545,13 +600,11 @@
             const phone = document.getElementById('order-phone').value;
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-            // Cambiamos estado del botón
             btn.disabled = true;
             btn.innerText = "Procesando...";
             msg.classList.add('hidden');
 
             try {
-                // 1. Guardar en Supabase (En la tabla 'orders' que hemos creado)
                 const { error: supabaseError } = await supabase.from('orders').insert([{
                     customer_name: name,
                     customer_email: email,
@@ -562,11 +615,14 @@
 
                 if (supabaseError) throw supabaseError;
 
-                // 2. Enviar a Telegram a múltiples Chat IDs simultáneamente
                 if (TELEGRAM_CHAT_IDS.length === 0) {
-                    console.warn("Faltan los Chat IDs de Telegram, el mensaje no se enviará, pero el pedido está guardado.");
+                    console.warn("Faltan los Chat IDs de Telegram.");
                 } else {
-                    const telegramText = `🔥 ¡NUEVO PEDIDO! 🔥\n\n👤 Nombre: ${name}\n📧 Email: ${email}\n📞 Teléfono: ${phone}\n💰 Total: ${total.toFixed(2)} €\n\n📦 PRODUCTOS:\n${cart.map(item => `- ${item.quantity}x ${item.name} (${item.colorName})`).join('\n')}`;
+                    // NUEVO: La talla ahora también llega por Telegram
+                    const telegramText = `🔥 ¡NUEVO PEDIDO! 🔥\n\n👤 Nombre: ${name}\n📧 Email: ${email}\n📞 Teléfono: ${phone}\n💰 Total: ${total.toFixed(2)} €\n\n📦 PRODUCTOS:\n${cart.map(item => {
+                        const itemSizeText = item.size ? ` - Talla ${item.size}` : '';
+                        return `- ${item.quantity}x ${item.name}${itemSizeText} (${item.colorName})`;
+                    }).join('\n')}`;
                     
                     await Promise.all(TELEGRAM_CHAT_IDS.map(chatId => 
                         fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -580,17 +636,16 @@
                     ));
                 }
 
-                // 3. Éxito: Limpiamos carrito y avisamos al cliente
                 cart = [];
                 saveCart();
                 document.getElementById('checkout-form').reset();
                 
                 msg.innerText = "¡Pedido realizado con éxito! Nos pondremos en contacto contigo.";
                 msg.className = "text-center font-bold mt-4 p-3 rounded-lg bg-green-100 text-green-800 block";
-                btn.classList.add('hidden'); // Ocultar el botón para que no pulse dos veces
+                btn.classList.add('hidden'); 
                 
                 setTimeout(() => {
-                    toggleCart(); // Cerramos el panel automáticamente tras 3 segundos
+                    toggleCart(); 
                 }, 3000);
 
             } catch (err) {
@@ -607,7 +662,6 @@
         // ==========================================
         async function fetchAndLoadProducts() {
             try {
-                // AQUÍ ESTÁ EL ARREGLO: .eq('is_visible', true) fuerza a que solo vengan los visibles
                 const { data, error } = await supabase
                     .from('products')
                     .select('*, variants:product_variants(*)')
@@ -618,7 +672,6 @@
                 appProducts = data;
                 renderProducts(appProducts);
                 
-                // Si el modal está abierto, forzamos a refrescar el estado del botón
                 if (currentModalProduct) {
                     changeModalImage(currentVariantIndex);
                 }
@@ -647,7 +700,6 @@
                     }
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, payload => {
-                    // Refresca si cambian los colores (agotado o no)
                     fetchAndLoadProducts(); 
                 })
                 .subscribe();
