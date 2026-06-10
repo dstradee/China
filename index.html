@@ -21,7 +21,8 @@
 <body class="bg-nardo min-h-screen font-sans text-gray-800 selection:bg-black selection:text-white antialiased flex flex-col">
 
     <!-- CABECERA PRINCIPAL (Sticky y Glassmorphism oscuro) -->
-    <header class="bg-white/10 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-white/5">
+    <header class="bg-white/10 backdrop-blur-xl shadow-sm sticky top-0 z-40 border-b border-white/10 transition-all">
+        <!-- Parte superior: Logo, Buscador, Carrito -->
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap md:flex-nowrap justify-between items-center gap-y-3">
             
             <!-- Logo -->
@@ -29,30 +30,37 @@
                 Éxito con Javi
             </h1>
             
-            <!-- Botón de carrito (Mobile: orden 2 para estar arriba, PC: orden 3) -->
+            <!-- Botón de carrito -->
             <button onclick="toggleCart()" class="text-white hover:scale-110 transition-transform duration-300 focus:outline-none relative bg-black/20 p-2.5 rounded-full hover:bg-black/40 shadow-sm border border-white/10 order-2 md:order-3 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
                 <!-- Badge del contador -->
                 <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-600 text-white text-[11px] font-black w-5 h-5 flex items-center justify-center rounded-full hidden shadow-md border-2 border-nardo">0</span>
             </button>
 
-            <!-- BUSCADOR (Pegado a la barra superior) -->
+            <!-- BUSCADOR -->
             <div class="relative w-full md:w-auto md:flex-1 max-w-xl group order-3 md:order-2 md:mx-6">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <svg class="w-5 h-5 text-white/70 group-focus-within:text-black transition-colors duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
                 <input type="text" id="search-input" onkeyup="filterProducts()" class="w-full pl-11 pr-4 py-2.5 md:py-3 bg-white/10 backdrop-blur-md rounded-full shadow-inner border border-white/20 focus:bg-white/95 focus:text-gray-900 focus:placeholder-gray-500 outline-none transition-all duration-300 font-semibold text-white placeholder-white/80" placeholder="Buscar prendas (ej. Bañador)...">
             </div>
-            
+        </div>
+
+        <!-- Parte Inferior: Barra de Categorías Cristalina -->
+        <div class="border-t border-white/10 mt-1">
+            <div class="max-w-6xl mx-auto px-4 py-2.5 flex gap-2.5 overflow-x-auto no-scrollbar items-center" id="category-bar">
+                <!-- Las categorías se cargan aquí por JS en tiempo real -->
+            </div>
         </div>
     </header>
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-grow max-w-6xl mx-auto px-4 py-8 md:py-12 w-full">
         
-        <!-- Título de Catálogo -->
-        <div class="mb-6 md:mb-8">
-            <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Todas las prendas</h2>
+        <!-- Título Dinámico -->
+        <div class="mb-6 md:mb-8 flex items-center justify-between">
+            <h2 id="section-title" class="text-2xl md:text-3xl font-bold text-white tracking-tight">Todas las prendas</h2>
+            <span id="product-count" class="text-sm font-bold text-white/50 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm hidden md:inline-block">0 productos</span>
         </div>
 
         <!-- CUADRÍCULA DE PRODUCTOS -->
@@ -85,34 +93,28 @@
     <!-- ========================================== -->
     <div id="legal-modal" class="fixed inset-0 z-[70] hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col relative transform scale-95 transition-transform duration-300" id="legal-content">
-            <!-- Header Modal Legal -->
             <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
                 <h2 class="text-xl font-black text-gray-900 tracking-tight" id="legal-title">Título</h2>
                 <button onclick="closeLegal()" class="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors focus:outline-none">
                     <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <!-- Cuerpo Modal Legal -->
             <div class="p-6 overflow-y-auto text-gray-600 text-sm leading-relaxed space-y-4" id="legal-text">
-                <!-- El texto se inyecta por JS -->
             </div>
         </div>
     </div>
 
-    <!-- MODAL DEL PRODUCTO (Pantalla completa / emergente) -->
+    <!-- MODAL DEL PRODUCTO -->
     <div id="product-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center md:p-6 opacity-0 transition-opacity duration-300">
-        <!-- Contenedor del Modal -->
         <div class="bg-white rounded-t-[2.5rem] md:rounded-[2rem] shadow-2xl w-full max-w-[100vw] md:max-w-5xl h-[92vh] md:h-[80vh] overflow-hidden flex flex-col md:flex-row relative transform translate-y-full md:translate-y-0 md:scale-95 transition-transform duration-500 ease-out" id="modal-content">
             
             <button onclick="closeModal()" class="absolute top-5 right-5 z-20 bg-white/90 hover:bg-black hover:text-white rounded-full p-2.5 text-gray-900 shadow-sm backdrop-blur-md transition-all duration-300 focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
 
-            <!-- Zona de la Imagen del Modal con Carrusel -->
             <div class="w-full md:w-1/2 bg-gray-50 relative flex items-center justify-center h-[45%] md:h-full shrink-0 group border-r border-gray-100">
                 <div id="modal-image-container" class="w-full h-full relative"></div>
                 
-                <!-- Flechas del Carrusel -->
                 <div id="carousel-arrows" class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 pointer-events-none hidden z-10">
                     <button onclick="prevImage(event)" class="pointer-events-auto bg-white/90 hover:bg-black hover:text-white text-black p-3 rounded-full shadow-lg backdrop-blur-md transition-all focus:outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -121,14 +123,11 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
                 </div>
-
-                <!-- Indicador de página -->
                 <div id="carousel-indicator" class="absolute bottom-4 right-4 bg-black/40 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md hidden z-10">
                     1 / 1
                 </div>
             </div>
 
-            <!-- Zona de la Info del Modal -->
             <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto">
                 <div class="mb-6 pb-6 border-b border-gray-100">
                     <h2 class="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight leading-tight" id="modal-title">Nombre</h2>
@@ -142,11 +141,11 @@
                     <p class="text-[11px] md:text-xs text-gray-400 mb-3 uppercase font-black tracking-widest">Color seleccionado</p>
                     <div class="flex flex-wrap gap-3 mb-6" id="modal-colors-container"></div>
 
-                    <!-- Selector de Tallas -->
+                    <!-- Tallas -->
                     <p class="text-[11px] md:text-xs text-gray-400 mb-3 uppercase font-black tracking-widest">Elige tu talla</p>
                     <div class="flex flex-wrap gap-2 mb-6" id="modal-sizes-container"></div>
                     
-                    <!-- Selector de cantidad -->
+                    <!-- Cantidad -->
                     <p class="text-[11px] md:text-xs text-gray-400 mb-3 uppercase font-black tracking-widest">Cantidad</p>
                     <div class="flex items-center gap-4 mb-8">
                         <div class="flex items-center border border-gray-200 rounded-full overflow-hidden bg-gray-50 shadow-sm transition-all hover:border-black/30">
@@ -165,9 +164,8 @@
         </div>
     </div>
 
-    <!-- PANEL DEL CARRITO LATERAL (SLIDE-OVER) -->
+    <!-- PANEL DEL CARRITO -->
     <div id="cart-panel" class="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-white/95 backdrop-blur-2xl shadow-2xl transform translate-x-full transition-transform duration-500 ease-out flex flex-col">
-        <!-- Cabecera del carrito -->
         <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white/50">
             <h2 class="text-2xl font-black text-gray-900 tracking-tight">Tu Carrito</h2>
             <button onclick="toggleCart()" class="p-2 text-gray-400 hover:text-black hover:bg-gray-100 hover:scale-110 rounded-full transition-all duration-300 focus:outline-none">
@@ -175,10 +173,8 @@
             </button>
         </div>
 
-        <!-- Lista de items -->
         <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
 
-        <!-- Pie del carrito -->
         <div class="p-6 border-t border-gray-100 bg-white flex flex-col">
             <div class="flex justify-between items-end mb-6">
                 <span class="text-gray-400 font-bold uppercase tracking-widest text-xs">Total a pagar:</span>
@@ -192,12 +188,12 @@
                 <input type="email" id="order-email" required placeholder="Correo Electrónico" class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all text-sm font-semibold hover:border-gray-400">
                 <input type="tel" id="order-phone" required placeholder="Número de Teléfono" class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all text-sm font-semibold hover:border-gray-400">
                 
-                <button type="submit" id="btn-submit-order" class="w-full bg-black text-white py-4 mt-4 rounded-full font-bold text-lg hover:bg-gray-800 hover:-translate-y-1 transform transition-all duration-300 shadow-xl focus:outline-none">
-                    Ejecutar orden
+                <button type="submit" id="btn-submit-order" class="w-full bg-black text-white py-4 mt-4 rounded-full font-black text-lg hover:bg-nardo transform transition-all duration-300 shadow-xl hover:shadow-[0_10px_40px_rgba(104,106,108,0.4)] focus:outline-none">
+                    Confirmar Pedido
                 </button>
             </form>
             
-            <button id="btn-show-checkout" onclick="showCheckout()" class="w-full bg-black text-white py-4.5 rounded-full font-bold text-lg hover:bg-gray-800 hover:-translate-y-1 transform transition-all duration-300 shadow-xl focus:outline-none hidden">
+            <button id="btn-show-checkout" onclick="showCheckout()" class="w-full bg-black text-white py-4.5 rounded-full font-black text-lg hover:bg-nardo transform transition-all duration-300 shadow-xl hover:shadow-[0_10px_40px_rgba(104,106,108,0.4)] focus:outline-none hidden">
                 Tramitar Pedido
             </button>
             
@@ -205,7 +201,6 @@
         </div>
     </div>
     
-    <!-- FONDO OSCURO PARA EL CARRITO -->
     <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/60 z-[55] hidden opacity-0 transition-opacity duration-500 backdrop-blur-sm"></div>
 
     <!-- Importamos el cliente de Supabase -->
@@ -214,7 +209,7 @@
     <!-- Lógica de la aplicación -->
     <script>
         // ==========================================
-        // TEXTOS LEGALES (Configurables)
+        // TEXTOS LEGALES 
         // ==========================================
         const legalTexts = {
             terms: `<strong>1. Introducción</strong><br>Las presentes condiciones rigen el uso de esta tienda online. Al realizar una compra, el usuario acepta estos términos.<br><br><strong>2. Precios y Pagos</strong><br>Todos los precios incluyen los impuestos aplicables. Nos reservamos el derecho a modificar los precios en cualquier momento.<br><br><strong>3. Propiedad Intelectual</strong><br>Todo el contenido de esta web es propiedad de la marca y no puede ser usado sin autorización explícita.`,
@@ -231,14 +226,10 @@
         function openLegal(type) {
             document.getElementById('legal-title').innerText = legalTitles[type];
             document.getElementById('legal-text').innerHTML = legalTexts[type];
-            
             const modal = document.getElementById('legal-modal');
             const content = document.getElementById('legal-content');
             modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-            }, 10);
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
         }
 
         function closeLegal() {
@@ -246,13 +237,11 @@
             const content = document.getElementById('legal-content');
             modal.classList.add('opacity-0');
             content.classList.add('scale-95');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
         }
 
         // ==========================================
-        // 1. CONFIGURACIÓN
+        // CONFIGURACIÓN SUPABASE & VARIABLES
         // ==========================================
         var supabaseUrl = 'https://koignwzdqxcilwieqijq.supabase.co'; 
         var supabaseAnonKey = 'sb_publishable__bw11mniMfgl_R9JWyL7SA_aPKqltNa';
@@ -262,6 +251,9 @@
         const TELEGRAM_CHAT_IDS = ['7200570066', '6519651464']; 
 
         var appProducts = []; 
+        var appCategories = []; // NUEVO: Categorías en tiempo real
+        var activeCategoryId = null; // NUEVO: Categoría seleccionada
+
         var currentModalProduct = null;
         var currentVariantIndex = 0; 
         var currentSelectedSize = null; 
@@ -280,18 +272,54 @@
         };
 
         // ==========================================
-        // 2. RENDERIZADO DEL ESCAPARATE
+        // NUEVO: CARGAR Y RENDERIZAR CATEGORÍAS
+        // ==========================================
+        async function fetchAndLoadCategories() {
+            const { data, error } = await supabase.from('categories').select('*').eq('is_visible', true).order('name');
+            if (!error && data) {
+                appCategories = data;
+                renderCategoryBar();
+            }
+        }
+
+        function renderCategoryBar() {
+            const bar = document.getElementById('category-bar');
+            
+            // Botón "Ver todo"
+            let html = `<button onclick="selectCategory(null)" class="whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${activeCategoryId === null ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20 border border-white/5'}">Ver todo</button>`;
+            
+            // Botones de cada categoría activa
+            appCategories.forEach(cat => {
+                const isActive = activeCategoryId === cat.id;
+                html += `<button onclick="selectCategory(${cat.id}, '${cat.name}')" class="whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20 border border-white/5'}">${cat.name}</button>`;
+            });
+            
+            bar.innerHTML = html;
+        }
+
+        function selectCategory(id, name = 'Todas las prendas') {
+            activeCategoryId = id;
+            document.getElementById('section-title').innerText = id === null ? 'Todas las prendas' : name;
+            renderCategoryBar(); 
+            filterProducts(); // Aplicamos el filtro visual
+        }
+
+        // ==========================================
+        // RENDERIZADO DEL ESCAPARATE
         // ==========================================
         function renderProducts(products) {
             const grid = document.getElementById('product-grid');
+            const countEl = document.getElementById('product-count');
             grid.innerHTML = ''; 
+            
+            countEl.innerText = `${products.length} producto${products.length !== 1 ? 's' : ''}`;
 
             if (!products || products.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full flex flex-col items-center justify-center py-20 bg-white/5 border border-white/10 rounded-[2rem] mt-4">
+                    <div class="col-span-full flex flex-col items-center justify-center py-20 bg-white/5 border border-white/10 rounded-[2rem] mt-4 backdrop-blur-sm shadow-xl">
                         <span class="text-6xl mb-4 opacity-40">🔍</span>
                         <h3 class="text-xl md:text-2xl font-black text-white mb-2 tracking-tight">No hemos encontrado resultados</h3>
-                        <p class="text-gray-300 text-center px-4 font-medium max-w-md">Intenta buscar con otras palabras o navega por el catálogo completo.</p>
+                        <p class="text-gray-300 text-center px-4 font-medium max-w-md">Intenta buscar con otras palabras o selecciona "Ver todo".</p>
                     </div>`;
                 return;
             }
@@ -338,26 +366,28 @@
         }
 
         // ==========================================
-        // LÓGICA DEL BUSCADOR INTELIGENTE
+        // LÓGICA DEL BUSCADOR + FILTRO DE CATEGORÍA
         // ==========================================
         function filterProducts() {
             const input = document.getElementById('search-input').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
             
-            if (!input) {
-                renderProducts(appProducts);
-                return;
-            }
-
             let stem = input;
-            if (input.endsWith('es') && input.length > 3) {
-                stem = input.slice(0, -2);
-            } else if (input.endsWith('s') && input.length > 2) {
-                stem = input.slice(0, -1);
-            }
+            if (input.endsWith('es') && input.length > 3) stem = input.slice(0, -2);
+            else if (input.endsWith('s') && input.length > 2) stem = input.slice(0, -1);
 
             const filtered = appProducts.filter(p => {
-                const searchArea = (p.name + " " + (p.description || "")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                return searchArea.includes(input) || searchArea.includes(stem);
+                // 1. Filtro por Categoría
+                if (activeCategoryId !== null && p.category_id !== activeCategoryId) {
+                    return false;
+                }
+                
+                // 2. Filtro por Búsqueda de texto
+                if (input) {
+                    const searchArea = (p.name + " " + (p.description || "")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (!searchArea.includes(input) && !searchArea.includes(stem)) return false;
+                }
+
+                return true;
             });
 
             renderProducts(filtered);
@@ -534,7 +564,6 @@
         // ==========================================
         // 4. LÓGICA DEL CARRITO Y PEDIDOS
         // ==========================================
-        
         function changeModalQty(change) {
             const qtyInput = document.getElementById('modal-qty');
             let current = parseInt(qtyInput.value);
@@ -784,7 +813,7 @@
                 appProducts = data;
                 
                 const searchVal = document.getElementById('search-input').value;
-                if(searchVal) {
+                if(searchVal || activeCategoryId !== null) {
                     filterProducts();
                 } else {
                     renderProducts(appProducts);
@@ -799,14 +828,17 @@
         }
 
         // ==========================================
-        // 7. SUPABASE REALTIME
+        // 7. SUPABASE REALTIME (Unificado)
         // ==========================================
         function setupRealtime() {
+            // Cargar categorías y productos la primera vez
+            fetchAndLoadCategories();
+            fetchAndLoadProducts(); 
+
             supabase
-                .channel('public:products')
+                .channel('public:store')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
                     fetchAndLoadProducts();
-                    
                     if (currentModalProduct) {
                         if (payload.eventType === 'UPDATE' && payload.new.is_visible === false && payload.new.id === currentModalProduct.id) {
                             closeModal();
@@ -819,11 +851,14 @@
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, payload => {
                     fetchAndLoadProducts(); 
                 })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, payload => {
+                    // Si se añade, quita o edita una categoría, se recarga la barra de arriba
+                    fetchAndLoadCategories(); 
+                })
                 .subscribe();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchAndLoadProducts(); 
             setupRealtime();        
             updateCartBadge(); 
         });
